@@ -11,8 +11,8 @@ FULL_DATA_FILE = Path("data/full_dataset.parquet")
 
 OUTPUT_DIR = Path("xgb_vs_lstm_labeled_plots")
 
-N_MATCHES = 10
-RANDOM_STATE = 42
+N_MATCHES = 30
+RANDOM_STATE = 101705
 
 TEAMS = [100, 200]
 
