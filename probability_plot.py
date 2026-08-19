@@ -4,33 +4,21 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 
+from common import RANDOM_STATE, TEAMS, TOWER_PARTS
 
-XGB_PREDICTIONS_FILE = Path("xgb_predictions.parquet")
-LSTM_PREDICTIONS_FILE = Path("lstm_predictions.npz")
+
+XGB_PREDICTIONS_FILE = Path("results/xgb_predictions.parquet")
+LSTM_PREDICTIONS_FILE = Path("results/lstm_predictions.npz")
 FULL_DATA_FILE = Path("data/full_dataset.parquet")
 
-OUTPUT_DIR = Path("xgb_vs_lstm_labeled_plots")
+OUTPUT_DIR = Path("figures/xgb_vs_lstm_labeled_plots")
 
 N_MATCHES = 30
-RANDOM_STATE = 101705
 
-TEAMS = [100, 200]
-
+# Deliberately excludes "plates" (unlike common.OBJECTIVES): plate gold is a
+# minor economic tick, not a game-shaping objective worth annotating on the
+# probability chart.
 OBJECTIVES = ["dragons", "heralds", "barons", "elders"]
-
-TOWER_PARTS = [
-    "top_outer",
-    "top_inner",
-    "top_base",
-    "mid_outer",
-    "mid_inner",
-    "mid_base",
-    "bot_outer",
-    "bot_inner",
-    "bot_base",
-    "nexus_tower_1",
-    "nexus_tower_2",
-]
 
 
 def load_xgb_predictions():
@@ -361,8 +349,29 @@ def plot_match(match_df, full_df, match_id):
     print("Saved:", out_file)
 
 
+def clear_output_dir():
+    """Remove PNGs from a previous run before writing this run's sample.
+
+    Without this, re-running with a different random sample of matches (e.g.
+    because the underlying predictions changed) leaves stale plots from the
+    old sample sitting alongside the new ones, so the folder silently
+    accumulates more files than N_MATCHES actually asks for.
+    """
+    if not OUTPUT_DIR.exists():
+        return
+
+    removed = 0
+    for path in OUTPUT_DIR.glob("xgb_vs_lstm_labeled_*.png"):
+        path.unlink()
+        removed += 1
+
+    if removed:
+        print(f"Removed {removed} stale plot(s) from a previous run.")
+
+
 def main():
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+    clear_output_dir()
 
     xgb_df = load_xgb_predictions()
     lstm_df = load_lstm_predictions()

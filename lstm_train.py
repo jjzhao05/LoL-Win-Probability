@@ -3,23 +3,32 @@ import itertools
 import csv
 
 import numpy as np
+import pandas as pd
 import torch
 import torch.nn as nn
 
-from sklearn.metrics import accuracy_score, log_loss, roc_auc_score
 from torch.utils.data import DataLoader, TensorDataset
 
+from common import (
+    RANDOM_STATE,
+    compute_metrics,
+    evaluate_by_minute_bucket as common_evaluate_by_minute_bucket,
+    print_bucket_rows,
+    print_metrics,
+    save_calibration_plot,
+)
 
-DATA_FILE = Path("lstm_data.npz")
-MODEL_FILE = Path("lstm_model.pt")
-PREDICTIONS_FILE = Path("lstm_predictions.npz")
-RESULTS_FILE = Path("lstm_grid_search_results.csv")
+
+DATA_FILE = Path("results/lstm_data.npz")
+MODEL_FILE = Path("models/lstm_model.pt")
+PREDICTIONS_FILE = Path("results/lstm_predictions.npz")
+RESULTS_FILE = Path("results/lstm_grid_search_results.csv")
+CALIBRATION_PLOT_FILE = Path("figures/lstm_calibration_curve.png")
 
 BATCH_SIZE = 128
 MAX_EPOCHS = 15
 PATIENCE = 3
 LEARNING_RATE = 0.001
-RANDOM_STATE = 101705
 
 
 GRID = {
@@ -77,7 +86,8 @@ def masked_loss(logits, y, mask, loss_fn):
     return loss
 
 
-def evaluate(model, loader, device):
+def collect_predictions(model, loader, device):
+    """Flatten every valid (match, minute) prediction in a loader to 1D arrays."""
     model.eval()
 
     all_probs = []
@@ -100,15 +110,12 @@ def evaluate(model, loader, device):
             all_probs.append(valid_probs)
             all_targets.append(valid_targets)
 
-    probs = np.concatenate(all_probs)
-    targets = np.concatenate(all_targets)
-    preds = (probs >= 0.5).astype(int)
+    return np.concatenate(all_probs), np.concatenate(all_targets)
 
-    return {
-        "auc": roc_auc_score(targets, probs),
-        "log_loss": log_loss(targets, probs, labels=[0, 1]),
-        "accuracy": accuracy_score(targets, preds),
-    }
+
+def evaluate(model, loader, device):
+    probs, targets = collect_predictions(model, loader, device)
+    return compute_metrics(targets, probs)
 
 
 def evaluate_final_minute(model, X, y, mask, device):
@@ -131,67 +138,33 @@ def evaluate_final_minute(model, X, y, mask, device):
         probs.append(probs_all[i, final_idx])
         targets.append(y[i])
 
-    probs = np.array(probs)
-    targets = np.array(targets)
-    preds = (probs >= 0.5).astype(int)
-
-    return {
-        "auc": roc_auc_score(targets, probs),
-        "log_loss": log_loss(targets, probs, labels=[0, 1]),
-        "accuracy": accuracy_score(targets, preds),
-    }
+    return compute_metrics(np.array(targets), np.array(probs))
 
 
 def evaluate_by_minute_bucket(model, X, y, mask, device):
+    """Bucket LSTM per-minute predictions using the same buckets/metrics the
+    XGBoost script uses (common.evaluate_by_minute_bucket), by first
+    flattening the masked (match, minute) grid into a long dataframe.
+    """
     model.eval()
 
     with torch.no_grad():
         X_t = torch.tensor(X, dtype=torch.float32).to(device)
         probs_all = torch.sigmoid(model(X_t)).cpu().numpy()
 
-    rows = []
+    n_matches, max_len = mask.shape
+    minutes = np.tile(np.arange(1, max_len + 1), (n_matches, 1))
+    targets = np.repeat(y[:, None], max_len, axis=1)
 
-    buckets = [
-        (1, 5),
-        (6, 10),
-        (11, 15),
-        (16, 20),
-        (21, 25),
-        (26, 30),
-        (31, 45),
-    ]
+    valid = mask == 1
 
-    for start, end in buckets:
-        probs = []
-        targets = []
+    pred_df = pd.DataFrame({
+        "minute": minutes[valid],
+        "target": targets[valid],
+        "prob": probs_all[valid],
+    })
 
-        for i in range(len(X)):
-            for t in range(start - 1, min(end, X.shape[1])):
-                if mask[i, t] == 1:
-                    probs.append(probs_all[i, t])
-                    targets.append(y[i])
-
-        if len(probs) == 0:
-            continue
-
-        probs = np.array(probs)
-        targets = np.array(targets)
-        preds = (probs >= 0.5).astype(int)
-
-        if len(np.unique(targets)) < 2:
-            auc = np.nan
-        else:
-            auc = roc_auc_score(targets, probs)
-
-        rows.append({
-            "minutes": f"{start}-{end}",
-            "rows": len(targets),
-            "auc": auc,
-            "log_loss": log_loss(targets, probs, labels=[0, 1]),
-            "accuracy": accuracy_score(targets, preds),
-        })
-
-    return rows
+    return common_evaluate_by_minute_bucket(pred_df, prob_col="prob")
 
 
 def predict_all(model, X, device):
@@ -318,17 +291,12 @@ def save_results_csv(results):
     if not results:
         return
 
+    RESULTS_FILE.parent.mkdir(parents=True, exist_ok=True)
+
     with open(RESULTS_FILE, "w", newline="", encoding="utf-8") as f:
         writer = csv.DictWriter(f, fieldnames=results[0].keys())
         writer.writeheader()
         writer.writerows(results)
-
-
-def print_metrics(name, metrics):
-    print(name)
-    print("AUC:", round(float(metrics["auc"]), 4))
-    print("Log loss:", round(float(metrics["log_loss"]), 4))
-    print("Accuracy:", round(float(metrics["accuracy"]), 4))
 
 
 def main():
@@ -415,8 +383,12 @@ def main():
 
     print("\nFinal evaluation")
 
-    test_metrics_all = evaluate(best_model, test_loader, device)
-    print_metrics("\nTest metrics across all valid minutes", test_metrics_all)
+    test_probs_all, test_targets_all = collect_predictions(best_model, test_loader, device)
+    test_metrics_all = compute_metrics(test_targets_all, test_probs_all)
+    print_metrics("Test metrics across all valid minutes", test_metrics_all)
+
+    brier = save_calibration_plot(test_targets_all, test_probs_all, CALIBRATION_PLOT_FILE, "LSTM win probability")
+    print("Saved calibration curve to:", CALIBRATION_PLOT_FILE, f"(Brier={brier:.4f})")
 
     test_metrics_final = evaluate_final_minute(
         best_model,
@@ -425,9 +397,10 @@ def main():
         mask_test,
         device,
     )
-    print_metrics("\nTest metrics using final observed minute only", test_metrics_final)
+    print_metrics("Test metrics using final observed minute only", test_metrics_final)
 
-    print("\nTest metrics by minute bucket")
+    print()
+    print("Test metrics by minute bucket")
 
     bucket_rows = evaluate_by_minute_bucket(
         best_model,
@@ -436,24 +409,11 @@ def main():
         mask_test,
         device,
     )
-
-    for row in bucket_rows:
-        auc_value = row["auc"]
-
-        if np.isnan(auc_value):
-            auc_text = "nan"
-        else:
-            auc_text = round(float(auc_value), 4)
-
-        print(
-            row["minutes"],
-            "| rows:", row["rows"],
-            "| auc:", auc_text,
-            "| log_loss:", round(float(row["log_loss"]), 4),
-            "| accuracy:", round(float(row["accuracy"]), 4),
-        )
+    print_bucket_rows(bucket_rows)
 
     test_probs = predict_all(best_model, X_test, device)
+
+    PREDICTIONS_FILE.parent.mkdir(parents=True, exist_ok=True)
 
     np.savez_compressed(
         PREDICTIONS_FILE,
@@ -478,11 +438,13 @@ def main():
         "test_auc_all_minutes": test_metrics_all["auc"],
         "test_log_loss_all_minutes": test_metrics_all["log_loss"],
         "test_accuracy_all_minutes": test_metrics_all["accuracy"],
+        "test_brier_all_minutes": test_metrics_all["brier"],
     }
 
     if "feature_names" in data:
         save_dict["feature_names"] = data["feature_names"]
 
+    MODEL_FILE.parent.mkdir(parents=True, exist_ok=True)
     torch.save(save_dict, MODEL_FILE)
 
     print("\nSaved best model to:", MODEL_FILE)

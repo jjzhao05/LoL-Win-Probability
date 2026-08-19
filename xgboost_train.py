@@ -1,22 +1,54 @@
+import csv
+import itertools
 from pathlib import Path
 
+import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import xgboost as xgb
 
-from sklearn.metrics import accuracy_score, log_loss, roc_auc_score
 from sklearn.model_selection import train_test_split
+
+from common import (
+    RANDOM_STATE,
+    SPLIT_FILE,
+    VAL_SIZE,
+    compute_metrics,
+    evaluate_by_minute_bucket,
+    infer_monotone_constraints,
+    print_bucket_rows,
+    print_metrics,
+    save_calibration_plot,
+)
 
 
 INPUT_FILE = Path("xgb_engineered/xgb_clean_dataset.parquet")
 
-SPLIT_FILE = Path("shared_split_ids.npz")
-
-MODEL_FILE = Path("xgb_model.json")
-PREDICTIONS_FILE = Path("xgb_predictions.parquet")
+MODEL_FILE = Path("models/xgb_model.json")
+PREDICTIONS_FILE = Path("results/xgb_predictions.parquet")
+CALIBRATION_PLOT_FILE = Path("figures/xgb_calibration_curve.png")
+RESULTS_FILE = Path("results/xgb_grid_search_results.csv")
+FEATURE_IMPORTANCE_CSV = Path("results/xgb_feature_importances.csv")
+FEATURE_IMPORTANCE_PLOT = Path("figures/xgb_feature_importance.png")
+TOP_N_FEATURES_PLOTTED = 25
 
 TEST_SIZE = 0.20
-RANDOM_STATE = 101705
+
+# Upper bound on boosting rounds; early stopping is expected to stop well
+# before this in most configs/runs.
+MAX_ESTIMATORS = 600
+EARLY_STOPPING_ROUNDS = 30
+
+# Mirrors the spirit of lstm_train.py's GRID: a modest search over the
+# hyperparameters that matter most for a gradient-boosted tree ensemble,
+# keeping colsample_bytree fixed the same way the LSTM side fixes
+# LEARNING_RATE outside its own grid.
+GRID = {
+    "max_depth": [3, 4, 6],
+    "learning_rate": [0.03, 0.05, 0.1],
+    "subsample": [0.7, 0.85, 1.0],
+}
+COLSAMPLE_BYTREE = 0.85
 
 
 def load_or_create_split(match_ids):
@@ -40,6 +72,8 @@ def load_or_create_split(match_ids):
         random_state=RANDOM_STATE,
     )
 
+    SPLIT_FILE.parent.mkdir(parents=True, exist_ok=True)
+
     np.savez_compressed(
         SPLIT_FILE,
         train_ids=train_ids,
@@ -62,67 +96,99 @@ def get_xy(df):
     return X, y
 
 
-def get_metrics(y_true, probs):
-    preds = (probs >= 0.5).astype(int)
+def config_iterator():
+    keys = list(GRID.keys())
+    values = [GRID[k] for k in keys]
+
+    for combo in itertools.product(*values):
+        yield dict(zip(keys, combo))
+
+
+def train_one_config(config, X_fit, y_fit, X_val, y_val, monotone_constraints):
+    model = xgb.XGBClassifier(
+        objective="binary:logistic",
+        eval_metric="logloss",
+        tree_method="hist",
+        n_estimators=MAX_ESTIMATORS,
+        max_depth=config["max_depth"],
+        learning_rate=config["learning_rate"],
+        subsample=config["subsample"],
+        colsample_bytree=COLSAMPLE_BYTREE,
+        monotone_constraints=monotone_constraints,
+        early_stopping_rounds=EARLY_STOPPING_ROUNDS,
+        random_state=RANDOM_STATE,
+        n_jobs=-1,
+    )
+
+    model.fit(X_fit, y_fit, eval_set=[(X_val, y_val)], verbose=False)
+
+    val_probs = model.predict_proba(X_val)[:, 1]
+    val_metrics = compute_metrics(y_val, val_probs)
 
     return {
-        "auc": roc_auc_score(y_true, probs),
-        "log_loss": log_loss(y_true, probs, labels=[0, 1]),
-        "accuracy": accuracy_score(y_true, preds),
-        "rows": len(y_true),
+        "model": model,
+        "best_iteration": model.best_iteration,
+        "val_auc": val_metrics["auc"],
+        "val_log_loss": val_metrics["log_loss"],
+        "val_accuracy": val_metrics["accuracy"],
+        "val_brier": val_metrics["brier"],
     }
 
 
-def print_metrics(name, metrics):
-    print()
-    print(name)
-    print("AUC:", round(float(metrics["auc"]), 4))
-    print("Log loss:", round(float(metrics["log_loss"]), 4))
-    print("Accuracy:", round(float(metrics["accuracy"]), 4))
-    print("Rows:", int(metrics["rows"]))
+def save_results_csv(results):
+    if not results:
+        return
+
+    RESULTS_FILE.parent.mkdir(parents=True, exist_ok=True)
+
+    with open(RESULTS_FILE, "w", newline="", encoding="utf-8") as f:
+        writer = csv.DictWriter(f, fieldnames=results[0].keys())
+        writer.writeheader()
+        writer.writerows(results)
 
 
-def evaluate_by_minute_bucket(pred_df):
-    buckets = [
-        (1, 5),
-        (6, 10),
-        (11, 15),
-        (16, 20),
-        (21, 25),
-        (26, 30),
-        (31, 45),
+def save_feature_importances(model, feature_names, csv_path, plot_path, top_n=TOP_N_FEATURES_PLOTTED):
+    """Save gain/weight/cover importances for every feature, plus a bar chart
+    of the top N by gain (average loss reduction per split -- the most
+    standard "which signals actually drive the model" metric).
+
+    Uses the booster directly rather than model.feature_importances_ so the
+    importance type is explicit and not dependent on the sklearn wrapper's
+    version-dependent default. Features the model never split on are absent
+    from get_score()'s result and are filled in as 0 here.
+    """
+    booster = model.get_booster()
+
+    gain = booster.get_score(importance_type="gain")
+    weight = booster.get_score(importance_type="weight")
+    cover = booster.get_score(importance_type="cover")
+
+    rows = [
+        {
+            "feature": name,
+            "gain": gain.get(name, 0.0),
+            "weight": weight.get(name, 0.0),
+            "cover": cover.get(name, 0.0),
+        }
+        for name in feature_names
     ]
 
-    print()
-    print("Test metrics by minute bucket")
+    imp_df = pd.DataFrame(rows).sort_values("gain", ascending=False).reset_index(drop=True)
+    imp_df.to_csv(csv_path, index=False)
 
-    for start, end in buckets:
-        g = pred_df[
-            (pred_df["minute"] >= start)
-            & (pred_df["minute"] <= end)
-        ].copy()
+    top = imp_df.head(top_n).iloc[::-1]
 
-        if g.empty:
-            continue
+    fig, ax = plt.subplots(figsize=(9, max(4, 0.3 * len(top))))
+    ax.barh(top["feature"], top["gain"], color="#1f77b4")
+    ax.set_xlabel("Gain (avg loss reduction per split)")
+    ax.set_title(f"Top {len(top)} XGBoost feature importances (by gain)")
+    ax.grid(True, axis="x", alpha=0.25)
 
-        probs = g["pred_prob_team_100_win"]
-        preds = (probs >= 0.5).astype(int)
+    fig.tight_layout()
+    fig.savefig(plot_path, dpi=150)
+    plt.close(fig)
 
-        if g["target"].nunique() < 2:
-            auc_text = "nan"
-        else:
-            auc_text = round(float(roc_auc_score(g["target"], probs)), 4)
-
-        bucket_log_loss = log_loss(g["target"], probs, labels=[0, 1])
-        bucket_accuracy = accuracy_score(g["target"], preds)
-
-        print(
-            f"{start}-{end}",
-            "| rows:", len(g),
-            "| auc:", auc_text,
-            "| log_loss:", round(float(bucket_log_loss), 4),
-            "| accuracy:", round(float(bucket_accuracy), 4),
-        )
+    return imp_df
 
 
 def main():
@@ -140,70 +206,141 @@ def main():
 
     train_ids, test_ids = load_or_create_split(df["match_id"])
 
-    train_ids = set(train_ids)
+    # Carve an early-stopping/model-selection validation slice out of the
+    # training matches, the same way lstm_engineering.py splits its own
+    # train_ids into train/val (same RANDOM_STATE and VAL_SIZE) -- this is
+    # in-memory only and never touches the persisted shared split, so the
+    # XGBoost/LSTM test set stays identical.
+    fit_ids, val_ids = train_test_split(
+        train_ids,
+        test_size=VAL_SIZE,
+        random_state=RANDOM_STATE,
+    )
+
+    fit_ids = set(fit_ids)
+    val_ids = set(val_ids)
     test_ids = set(test_ids)
 
-    train_df = df[df["match_id"].isin(train_ids)].copy()
+    fit_df = df[df["match_id"].isin(fit_ids)].copy()
+    val_df = df[df["match_id"].isin(val_ids)].copy()
     test_df = df[df["match_id"].isin(test_ids)].copy()
 
-    if train_df.empty:
+    if fit_df.empty:
         raise ValueError("Training data is empty.")
+
+    if val_df.empty:
+        raise ValueError("Validation data is empty.")
 
     if test_df.empty:
         raise ValueError("Test data is empty.")
 
-    X_train, y_train = get_xy(train_df)
+    X_fit, y_fit = get_xy(fit_df)
+    X_val, y_val = get_xy(val_df)
     X_test, y_test = get_xy(test_df)
 
     print("Rows:", len(df))
     print("Matches:", df["match_id"].nunique())
-    print("Train matches:", train_df["match_id"].nunique())
+    print("Train matches:", fit_df["match_id"].nunique())
+    print("Val matches:", val_df["match_id"].nunique())
     print("Test matches:", test_df["match_id"].nunique())
-    print("Features:", X_train.shape[1])
+    print("Features:", X_fit.shape[1])
 
     print()
     print("Feature columns:")
-    for col in X_train.columns:
+    for col in X_fit.columns:
         print(col)
 
-    baseline = max(y_train.mean(), 1 - y_train.mean())
+    baseline = max(y_fit.mean(), 1 - y_fit.mean())
 
     print()
     print("Majority-class baseline accuracy:", round(float(baseline), 4))
 
-    model = xgb.XGBClassifier(
-        objective="binary:logistic",
-        eval_metric="logloss",
-        tree_method="hist",
-        n_estimators=600,
-        max_depth=4,
-        learning_rate=0.05,
-        subsample=0.85,
-        colsample_bytree=0.85,
-        random_state=RANDOM_STATE,
-        n_jobs=-1,
-    )
+    monotone_constraints = infer_monotone_constraints(X_fit.columns)
 
+    configs = list(config_iterator())
     print()
-    print("Training XGBoost")
+    print("Total configs:", len(configs))
 
-    model.fit(X_train, y_train)
+    results = []
 
-    probs = model.predict_proba(X_test)[:, 1]
+    best_model = None
+    best_config = None
+    best_val_log_loss = float("inf")
+
+    for i, config in enumerate(configs, start=1):
+        print("\n" + "=" * 80)
+        print(f"Config {i}/{len(configs)}")
+        print(config)
+
+        result = train_one_config(config, X_fit, y_fit, X_val, y_val, monotone_constraints)
+
+        print(
+            f"best_iteration={result['best_iteration']} "
+            f"val_auc={result['val_auc']:.4f} "
+            f"val_log_loss={result['val_log_loss']:.4f} "
+            f"val_accuracy={result['val_accuracy']:.4f} "
+            f"val_brier={result['val_brier']:.4f}"
+        )
+
+        row = {
+            **config,
+            "colsample_bytree": COLSAMPLE_BYTREE,
+            "best_iteration": result["best_iteration"],
+            "val_auc": result["val_auc"],
+            "val_log_loss": result["val_log_loss"],
+            "val_accuracy": result["val_accuracy"],
+            "val_brier": result["val_brier"],
+        }
+
+        results.append(row)
+        save_results_csv(results)
+
+        if result["val_log_loss"] < best_val_log_loss:
+            best_val_log_loss = result["val_log_loss"]
+            best_model = result["model"]
+            best_config = config
+
+    print("\n" + "=" * 80)
+    print("Best config")
+    print(best_config)
+    print("Best validation log loss:", round(float(best_val_log_loss), 4))
+    print("Saved grid search results to:", RESULTS_FILE)
+
+    print("\nFinal evaluation")
+
+    importances = save_feature_importances(
+        best_model, X_fit.columns, FEATURE_IMPORTANCE_CSV, FEATURE_IMPORTANCE_PLOT
+    )
+    print("Saved feature importances to:", FEATURE_IMPORTANCE_CSV)
+    print("Saved feature importance chart to:", FEATURE_IMPORTANCE_PLOT)
+    print()
+    print(f"Top {min(10, len(importances))} features by gain:")
+    for _, row in importances.head(10).iterrows():
+        print(f"  {row['feature']:<45} gain={row['gain']:.2f}  weight={row['weight']:.0f}")
+
+    probs = best_model.predict_proba(X_test)[:, 1]
     preds = (probs >= 0.5).astype(int)
 
-    overall = get_metrics(y_test, probs)
+    overall = compute_metrics(y_test, probs)
 
     print_metrics("Test metrics across all valid minutes", overall)
+
+    brier = save_calibration_plot(y_test, probs, CALIBRATION_PLOT_FILE, "XGBoost win probability")
+    print("Saved calibration curve to:", CALIBRATION_PLOT_FILE, f"(Brier={brier:.4f})")
 
     pred_df = test_df[["match_id", "minute", "target"]].copy()
     pred_df["pred_prob_team_100_win"] = probs
     pred_df["pred_label"] = preds
     pred_df = pred_df.sort_values(["match_id", "minute"])
 
-    evaluate_by_minute_bucket(pred_df)
+    print()
+    print("Test metrics by minute bucket")
+    bucket_rows = evaluate_by_minute_bucket(pred_df, prob_col="pred_prob_team_100_win")
+    print_bucket_rows(bucket_rows)
 
-    model.save_model(MODEL_FILE)
+    MODEL_FILE.parent.mkdir(parents=True, exist_ok=True)
+    PREDICTIONS_FILE.parent.mkdir(parents=True, exist_ok=True)
+    best_model.save_model(MODEL_FILE)
     pred_df.to_parquet(PREDICTIONS_FILE, index=False)
 
     print()

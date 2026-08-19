@@ -74,7 +74,13 @@ RATE_LIMITS = [
     (100, 120),
 ]
 
-OUTPUT_DIR = Path("data_clean_schema_parquet_600_reduced")
+# NOTE: this must match the "data/" layout combine.py and the rest of the
+# pipeline expect (data/<RANK>_snapshots_parquet, data/<RANK>_puuid_pool.json,
+# data/<RANK>_processed_matches.json, data/all_processed_matches.json). It
+# previously pointed at a differently-named folder that didn't match what the
+# repo actually contains, which would have collected into the wrong place on
+# a fresh run.
+OUTPUT_DIR = Path("data")
 OUTPUT_DIR.mkdir(exist_ok=True)
 
 BRACKETS = {
@@ -790,23 +796,48 @@ def _empty_player_event_counts(participant_ids):
     return {pid: {key: 0 for key in keys} for pid in participant_ids}
 
 
-def _cumulative_player_counts(player_event_log, participant_ids, up_to_ts):
+def _make_player_counts_advancer(player_event_log, participant_ids):
+    """Return a function that gives cumulative per-player event counts up to
+    a timestamp, in O(1) amortized per call instead of O(events) per call.
+
+    `player_event_log` is consumed once via an advancing pointer, which is
+    only correct because callers advance `up_to_ts` monotonically (true here
+    since extract_snapshots walks timeline frames in chronological order).
+    """
+    event_log = sorted(player_event_log, key=lambda item: item[0])
     counts = _empty_player_event_counts(participant_ids)
-    for ts, pid, stat, amount in player_event_log:
-        if ts <= up_to_ts and pid in counts and stat in counts[pid]:
-            counts[pid][stat] += amount
     team_kills = {100: 0, 200: 0}
-    for pid, c in counts.items():
-        team = 100 if 1 <= pid <= 5 else 200
-        team_kills[team] += c.get("kills", 0)
-    for pid, c in counts.items():
-        team = 100 if 1 <= pid <= 5 else 200
-        kills = c.get("kills", 0)
-        deaths = c.get("deaths", 0)
-        assists = c.get("assists", 0)
-        c["kda"] = round((kills + assists) / max(1, deaths), 3)
-        c["kill_participation"] = round((kills + assists) / team_kills[team], 3) if team_kills[team] else 0.0
-    return counts
+    idx = 0
+    n = len(event_log)
+
+    def advance(up_to_ts):
+        nonlocal idx
+        while idx < n and event_log[idx][0] <= up_to_ts:
+            ts, pid, stat, amount = event_log[idx]
+            if pid in counts and stat in counts[pid]:
+                counts[pid][stat] += amount
+                if stat == "kills":
+                    team = 100 if 1 <= pid <= 5 else 200
+                    team_kills[team] += amount
+            idx += 1
+
+        # Derived fields are cheap to recompute (10 players) so we just
+        # redo them on every call rather than tracking them incrementally.
+        result = {}
+        for pid, c in counts.items():
+            team = 100 if 1 <= pid <= 5 else 200
+            kills = c.get("kills", 0)
+            deaths = c.get("deaths", 0)
+            assists = c.get("assists", 0)
+            derived = dict(c)
+            derived["kda"] = round((kills + assists) / max(1, deaths), 3)
+            derived["kill_participation"] = (
+                round((kills + assists) / team_kills[team], 3) if team_kills[team] else 0.0
+            )
+            result[pid] = derived
+        return result
+
+    return advance
 
 
 def _player_snapshot_values(pf, event_counts):
@@ -932,12 +963,23 @@ def extract_snapshots(match, timeline):
     team_event_log, player_event_log, first_blood, first_tower = _build_event_log(frames, team100_ids, team200_ids)
     tower_destroy_log = _build_tower_destroy_log(frames)
 
+    # Both advancers assume `up_to_ts` is called with non-decreasing values,
+    # which holds because the frame loop below walks timeline frames (which
+    # Riot returns in chronological order) top to bottom.
+    sorted_team_event_log = sorted(team_event_log, key=lambda item: item[0])
+    team_counts_state = {100: {k: 0 for k in EVENT_TYPES}, 200: {k: 0 for k in EVENT_TYPES}}
+    team_event_idx = 0
+    team_event_n = len(sorted_team_event_log)
+
     def cumulative_counts(up_to_ts):
-        counts = {100: {k: 0 for k in EVENT_TYPES}, 200: {k: 0 for k in EVENT_TYPES}}
-        for ts, team, etype in team_event_log:
-            if ts <= up_to_ts:
-                counts[team][etype] += 1
-        return counts
+        nonlocal team_event_idx
+        while team_event_idx < team_event_n and sorted_team_event_log[team_event_idx][0] <= up_to_ts:
+            _, team, etype = sorted_team_event_log[team_event_idx]
+            team_counts_state[team][etype] += 1
+            team_event_idx += 1
+        return team_counts_state
+
+    player_counts_advancer = _make_player_counts_advancer(player_event_log, all_participant_ids)
 
     match_id = match["metadata"]["matchId"]
     rows = []
@@ -954,7 +996,7 @@ def extract_snapshots(match, timeline):
 
         counts = cumulative_counts(t)
         c100, c200 = counts[100], counts[200]
-        player_counts = _cumulative_player_counts(player_event_log, all_participant_ids, t)
+        player_counts = player_counts_advancer(t)
 
         row = {
             "match_id": match_id,

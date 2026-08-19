@@ -6,35 +6,13 @@ import pandas as pd
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
 
+from common import BASIC_STATS, OBJECTIVES, RANDOM_STATE, ROLES, SPLIT_FILE, TEAMS, TOWER_PARTS, VAL_SIZE
+
 
 INPUT_FILE = Path("data/full_dataset.parquet")
-OUTPUT_FILE = Path("lstm_data.npz")
-SPLIT_FILE = Path("shared_split_ids.npz")
+OUTPUT_FILE = Path("results/lstm_data.npz")
 
 MAX_LEN = 45
-VAL_SIZE = 0.2
-RANDOM_STATE = 101705
-
-ROLES = ["top", "jg", "mid", "bot", "sup"]
-TEAMS = [100, 200]
-
-BASIC_STATS = [
-    "current_gold",
-    "total_gold",
-    "level",
-    "xp",
-    "minions_killed",
-    "jungle_minions_killed",
-    "kills",
-    "deaths",
-    "assists",
-    "solo_kills",
-    "wards_placed",
-    "wards_killed",
-    "control_wards_placed",
-]
-
-OBJECTIVES = ["plates", "dragons", "heralds", "barons", "elders"]
 
 
 def team_total(df, team, stat):
@@ -88,24 +66,10 @@ def add_features(df):
             df["team_minions_killed_diff"] + df["team_jungle_minions_killed_diff"]
         ) / df["minute"].clip(lower=1)
 
-    tower_parts = [
-        "top_outer",
-        "top_inner",
-        "top_base",
-        "mid_outer",
-        "mid_inner",
-        "mid_base",
-        "bot_outer",
-        "bot_inner",
-        "bot_base",
-        "nexus_tower_1",
-        "nexus_tower_2",
-    ]
-
     for team in TEAMS:
         tower_cols = [
             f"{part}_{team}_destroyed"
-            for part in tower_parts
+            for part in TOWER_PARTS
             if f"{part}_{team}_destroyed" in df.columns
         ]
 
@@ -189,22 +153,40 @@ def load_shared_split(all_match_ids):
     return train_ids, val_ids, test_ids
 
 
-def make_arrays(df, match_ids, feature_cols):
-    X = np.zeros((len(match_ids), MAX_LEN, len(feature_cols)), dtype=np.float32)
+def build_match_groups(df, feature_cols):
+    """Group the (already match_id/timestamp_sec sorted) dataframe once.
+
+    Previously make_arrays() re-filtered the full dataframe with
+    `df[df["match_id"] == match_id]` once per match, once for each of the
+    train/val/test splits -- an O(n_matches * n_rows) scan repeated three
+    times. A single groupby pass here is O(n_rows) and is shared by all
+    three splits.
+    """
+    groups = {}
+    y_by_match = {}
+
+    for match_id, g in df.groupby("match_id", sort=False):
+        groups[match_id] = g[feature_cols].to_numpy(dtype=np.float32)
+        y_by_match[match_id] = g["team_100_win"].iloc[0]
+
+    return groups, y_by_match
+
+
+def make_arrays(match_ids, groups, y_by_match, num_features):
+    X = np.zeros((len(match_ids), MAX_LEN, num_features), dtype=np.float32)
     y = np.zeros(len(match_ids), dtype=np.float32)
     mask = np.zeros((len(match_ids), MAX_LEN), dtype=np.float32)
 
-    y_by_match = df.groupby("match_id")["team_100_win"].first()
-
     for i, match_id in enumerate(match_ids):
-        g = df[df["match_id"] == match_id].sort_values("timestamp_sec")
+        values = groups.get(match_id)
+        if values is None:
+            continue
 
-        values = g[feature_cols].to_numpy(dtype=np.float32)
         length = min(len(values), MAX_LEN)
 
         X[i, :length, :] = values[:length]
         mask[i, :length] = 1
-        y[i] = y_by_match.loc[match_id]
+        y[i] = y_by_match[match_id]
 
     return X, y, mask
 
@@ -233,9 +215,12 @@ def main():
 
     df[feature_cols] = scaler.transform(df[feature_cols])
 
-    X_train, y_train, mask_train = make_arrays(df, train_ids, feature_cols)
-    X_val, y_val, mask_val = make_arrays(df, val_ids, feature_cols)
-    X_test, y_test, mask_test = make_arrays(df, test_ids, feature_cols)
+    groups, y_by_match = build_match_groups(df, feature_cols)
+    num_features = len(feature_cols)
+
+    X_train, y_train, mask_train = make_arrays(train_ids, groups, y_by_match, num_features)
+    X_val, y_val, mask_val = make_arrays(val_ids, groups, y_by_match, num_features)
+    X_test, y_test, mask_test = make_arrays(test_ids, groups, y_by_match, num_features)
 
     np.savez_compressed(
         OUTPUT_FILE,

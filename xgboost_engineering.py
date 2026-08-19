@@ -2,42 +2,11 @@ from pathlib import Path
 
 import polars as pl
 
+from common import BASIC_STATS, DAMAGE_STATS, OBJECTIVES, ROLES, TOWER_PARTS
+
 
 INPUT_FILE = Path("data/full_dataset.parquet")
 OUTPUT_FILE = Path("xgb_engineered/xgb_clean_dataset.parquet")
-
-ROLES = ["top", "jg", "mid", "bot", "sup"]
-TEAMS = [100, 200]
-
-BASIC_STATS = [
-    "current_gold",
-    "total_gold",
-    "level",
-    "xp",
-    "minions_killed",
-    "jungle_minions_killed",
-    "kills",
-    "deaths",
-    "assists",
-    "solo_kills",
-    "wards_placed",
-    "wards_killed",
-    "control_wards_placed",
-]
-
-DAMAGE_STATS = [
-    "magic_damage_done",
-    "magic_damage_done_to_champions",
-    "magic_damage_taken",
-    "physical_damage_done",
-    "physical_damage_done_to_champions",
-    "physical_damage_taken",
-    "true_damage_done",
-    "true_damage_done_to_champions",
-    "true_damage_taken",
-]
-
-OBJECTIVES = ["plates", "dragons", "heralds", "barons", "elders"]
 
 
 def cols(lf):
@@ -127,24 +96,10 @@ def add_features(lf):
 def add_tower_features(lf):
     existing = cols(lf)
 
-    tower_parts = [
-        "top_outer",
-        "top_inner",
-        "top_base",
-        "mid_outer",
-        "mid_inner",
-        "mid_base",
-        "bot_outer",
-        "bot_inner",
-        "bot_base",
-        "nexus_tower_1",
-        "nexus_tower_2",
-    ]
-
     def tower_sum(team):
         expr = pl.lit(0)
 
-        for part in tower_parts:
+        for part in TOWER_PARTS:
             col = f"{part}_{team}_destroyed"
             if col in existing:
                 expr = expr + pl.col(col)

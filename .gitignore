@@ -1,4 +1,19 @@
 .env
+
+# Python
+__pycache__/
+*.pyc
+.ipynb_checkpoints/
+
+# Generated data / model artifacts (all reproducible via main.py / the
+# individual pipeline scripts -- see README.md for the pipeline order)
 *.csv
 *.json
 *.parquet
+*.npz
+*.pt
+*.pth
+
+# ...except the small, hand-authored lookup tables the pipeline reads from
+# (these are inputs, not generated output, so they should stay tracked)
+!lol_data/*.json

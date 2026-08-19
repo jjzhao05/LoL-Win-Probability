@@ -5,7 +5,15 @@ import time
 import csv
 
 
+# NOTE: collect_data.py is intentionally NOT part of this pipeline. It's a
+# slow, rate-limited call out to the Riot API to build the raw per-rank
+# parquet snapshots under data/, and is meant to be run manually/once, not
+# on every pipeline run. combine.py is included below because it's a cheap,
+# local step (merging those per-rank snapshots into data/full_dataset.parquet)
+# that every downstream script in this list depends on, and previously had to
+# be remembered and run by hand before `main.py` would actually work.
 SCRIPTS = [
+    "combine.py",
     "summary_stats.py",
     "xgboost_engineering.py",
     "xgboost_train.py",
@@ -14,7 +22,7 @@ SCRIPTS = [
     "probability_plot.py",
 ]
 
-LOG_FILE = Path("run_times.csv")
+LOG_FILE = Path("results/run_times.csv")
 
 
 def run_script(script):
@@ -79,6 +87,8 @@ def main():
         "seconds": round(total_seconds, 2),
         "minutes": round(total_seconds / 60, 2),
     })
+
+    LOG_FILE.parent.mkdir(parents=True, exist_ok=True)
 
     with open(LOG_FILE, "w", newline="", encoding="utf-8") as f:
         writer = csv.DictWriter(
