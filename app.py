@@ -13,7 +13,7 @@ Three pages, picked from the sidebar:
      lead, objectives, towers) and get a live XGBoost win-probability read
      out, useful for building intuition about which signals move the model.
 
-Run with:  streamlit run streamlit_app.py
+Run with:  streamlit run app.py
 (from the project root, after main.py / the individual train scripts have
 been run at least once so the files below exist.)
 """

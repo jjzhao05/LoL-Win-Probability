@@ -16,6 +16,6 @@ torch>=2.0
 # Plotting / reporting
 matplotlib>=3.7
 
-# Interactive app (streamlit_app.py)
+# Interactive app (app.py)
 streamlit>=1.50
 plotly>=5.20

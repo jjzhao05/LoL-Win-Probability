@@ -21,7 +21,7 @@ folders so the root stays readable:
 ├── lstm_train.py              # trains + grid-searches the LSTM model
 ├── ablation.py                # gold/XP/level and objective feature ablations
 ├── probability_plot.py        # per-match XGBoost-vs-LSTM probability charts
-├── streamlit_app.py           # interactive dashboard (streamlit run streamlit_app.py)
+├── app.py                     # interactive dashboard (streamlit run app.py)
 ├── main.py                    # runs the pipeline end to end (see SCRIPTS list in main.py)
 ├── common.py                  # shared constants + eval helpers used across scripts
 ├── compare.ipynb              # notebook scratch space
