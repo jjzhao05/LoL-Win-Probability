@@ -5,20 +5,12 @@ import time
 import csv
 
 
-# NOTE: collect_data.py is intentionally NOT part of this pipeline. It's a
-# slow, rate-limited call out to the Riot API to build the raw per-rank
-# parquet snapshots under data/, and is meant to be run manually/once, not
-# on every pipeline run. combine.py is included below because it's a cheap,
-# local step (merging those per-rank snapshots into data/full_dataset.parquet)
-# that every downstream script in this list depends on, and previously had to
-# be remembered and run by hand before `main.py` would actually work.
 SCRIPTS = [
     "combine.py",
     "summary_stats.py",
     "xgboost_engineering.py",
     "xgboost_train.py",
-    "lstm_engineering.py",
-    "lstm_train.py",
+    "logistic_regression_train.py",
     "probability_plot.py",
 ]
 

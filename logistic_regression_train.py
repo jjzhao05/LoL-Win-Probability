@@ -2,12 +2,14 @@ import csv
 import itertools
 from pathlib import Path
 
+import joblib
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-import xgboost as xgb
 
+from sklearn.linear_model import LogisticRegression
 from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import StandardScaler
 
 from common import (
     RANDOM_STATE,
@@ -15,7 +17,6 @@ from common import (
     VAL_SIZE,
     compute_metrics,
     evaluate_by_minute_bucket,
-    infer_monotone_constraints,
     print_bucket_rows,
     print_metrics,
     save_calibration_plot,
@@ -24,25 +25,21 @@ from common import (
 
 INPUT_FILE = Path("xgb_engineered/xgb_clean_dataset.parquet")
 
-MODEL_FILE = Path("models/xgb_model.json")
-PREDICTIONS_FILE = Path("results/xgb_predictions.parquet")
-CALIBRATION_PLOT_FILE = Path("figures/xgb_calibration_curve.png")
-RESULTS_FILE = Path("results/xgb_grid_search_results.csv")
-FEATURE_IMPORTANCE_CSV = Path("results/xgb_feature_importances.csv")
-FEATURE_IMPORTANCE_PLOT = Path("figures/xgb_feature_importance.png")
+MODEL_FILE = Path("models/logreg_model.joblib")
+PREDICTIONS_FILE = Path("results/logreg_predictions.parquet")
+CALIBRATION_PLOT_FILE = Path("figures/logreg_calibration_curve.png")
+RESULTS_FILE = Path("results/logreg_grid_search_results.csv")
+FEATURE_IMPORTANCE_CSV = Path("results/logreg_feature_importances.csv")
+FEATURE_IMPORTANCE_PLOT = Path("figures/logreg_feature_importance.png")
 TOP_N_FEATURES_PLOTTED = 25
 
 TEST_SIZE = 0.20
-
-MAX_ESTIMATORS = 600
-EARLY_STOPPING_ROUNDS = 30
+MAX_ITER = 1000
 
 GRID = {
-    "max_depth": [3, 4, 6],
-    "learning_rate": [0.03, 0.05, 0.1],
-    "subsample": [0.7, 0.85, 1.0],
+    "C": [0.01, 0.1, 1.0, 10.0],
 }
-COLSAMPLE_BYTREE = 0.85
+PENALTY = "l2"
 
 
 def load_or_create_split(match_ids):
@@ -98,30 +95,24 @@ def config_iterator():
         yield dict(zip(keys, combo))
 
 
-def train_one_config(config, X_fit, y_fit, X_val, y_val, monotone_constraints):
-    model = xgb.XGBClassifier(
-        objective="binary:logistic",
-        eval_metric="logloss",
-        tree_method="hist",
-        n_estimators=MAX_ESTIMATORS,
-        max_depth=config["max_depth"],
-        learning_rate=config["learning_rate"],
-        subsample=config["subsample"],
-        colsample_bytree=COLSAMPLE_BYTREE,
-        monotone_constraints=monotone_constraints,
-        early_stopping_rounds=EARLY_STOPPING_ROUNDS,
+def train_one_config(config, X_fit, y_fit, X_val, y_val, scaler):
+    X_fit_scaled = scaler.transform(X_fit)
+    X_val_scaled = scaler.transform(X_val)
+
+    model = LogisticRegression(
+        penalty=PENALTY,
+        C=config["C"],
+        max_iter=MAX_ITER,
         random_state=RANDOM_STATE,
         n_jobs=-1,
     )
+    model.fit(X_fit_scaled, y_fit)
 
-    model.fit(X_fit, y_fit, eval_set=[(X_val, y_val)], verbose=False)
-
-    val_probs = model.predict_proba(X_val)[:, 1]
+    val_probs = model.predict_proba(X_val_scaled)[:, 1]
     val_metrics = compute_metrics(y_val, val_probs)
 
     return {
         "model": model,
-        "best_iteration": model.best_iteration,
         "val_auc": val_metrics["auc"],
         "val_log_loss": val_metrics["log_loss"],
         "val_accuracy": val_metrics["accuracy"],
@@ -142,31 +133,23 @@ def save_results_csv(results):
 
 
 def save_feature_importances(model, feature_names, csv_path, plot_path, top_n=TOP_N_FEATURES_PLOTTED):
-    booster = model.get_booster()
+    coefs = model.coef_[0]
 
-    gain = booster.get_score(importance_type="gain")
-    weight = booster.get_score(importance_type="weight")
-    cover = booster.get_score(importance_type="cover")
+    imp_df = pd.DataFrame({
+        "feature": feature_names,
+        "coefficient": coefs,
+        "abs_coefficient": np.abs(coefs),
+    }).sort_values("abs_coefficient", ascending=False).reset_index(drop=True)
 
-    rows = [
-        {
-            "feature": name,
-            "gain": gain.get(name, 0.0),
-            "weight": weight.get(name, 0.0),
-            "cover": cover.get(name, 0.0),
-        }
-        for name in feature_names
-    ]
-
-    imp_df = pd.DataFrame(rows).sort_values("gain", ascending=False).reset_index(drop=True)
     imp_df.to_csv(csv_path, index=False)
 
     top = imp_df.head(top_n).iloc[::-1]
+    colors = ["#1f77b4" if c >= 0 else "#d62728" for c in top["coefficient"]]
 
     fig, ax = plt.subplots(figsize=(9, max(4, 0.3 * len(top))))
-    ax.barh(top["feature"], top["gain"], color="#1f77b4")
-    ax.set_xlabel("Gain (avg loss reduction per split)")
-    ax.set_title(f"Top {len(top)} XGBoost feature importances (by gain)")
+    ax.barh(top["feature"], top["coefficient"], color=colors)
+    ax.set_xlabel("Standardized coefficient (blue = raises P(team 100 wins), red = lowers it)")
+    ax.set_title(f"Top {len(top)} logistic regression coefficients (by magnitude)")
     ax.grid(True, axis="x", alpha=0.25)
 
     fig.tight_layout()
@@ -225,17 +208,13 @@ def main():
     print("Test matches:", test_df["match_id"].nunique())
     print("Features:", X_fit.shape[1])
 
-    print()
-    print("Feature columns:")
-    for col in X_fit.columns:
-        print(col)
-
     baseline = max(y_fit.mean(), 1 - y_fit.mean())
 
     print()
     print("Majority-class baseline accuracy:", round(float(baseline), 4))
 
-    monotone_constraints = infer_monotone_constraints(X_fit.columns)
+    scaler = StandardScaler()
+    scaler.fit(X_fit)
 
     configs = list(config_iterator())
     print()
@@ -252,10 +231,9 @@ def main():
         print(f"Config {i}/{len(configs)}")
         print(config)
 
-        result = train_one_config(config, X_fit, y_fit, X_val, y_val, monotone_constraints)
+        result = train_one_config(config, X_fit, y_fit, X_val, y_val, scaler)
 
         print(
-            f"best_iteration={result['best_iteration']} "
             f"val_auc={result['val_auc']:.4f} "
             f"val_log_loss={result['val_log_loss']:.4f} "
             f"val_accuracy={result['val_accuracy']:.4f} "
@@ -264,8 +242,7 @@ def main():
 
         row = {
             **config,
-            "colsample_bytree": COLSAMPLE_BYTREE,
-            "best_iteration": result["best_iteration"],
+            "penalty": PENALTY,
             "val_auc": result["val_auc"],
             "val_log_loss": result["val_log_loss"],
             "val_accuracy": result["val_accuracy"],
@@ -294,18 +271,19 @@ def main():
     print("Saved feature importances to:", FEATURE_IMPORTANCE_CSV)
     print("Saved feature importance chart to:", FEATURE_IMPORTANCE_PLOT)
     print()
-    print(f"Top {min(10, len(importances))} features by gain:")
+    print(f"Top {min(10, len(importances))} features by |coefficient|:")
     for _, row in importances.head(10).iterrows():
-        print(f"  {row['feature']:<45} gain={row['gain']:.2f}  weight={row['weight']:.0f}")
+        print(f"  {row['feature']:<45} coef={row['coefficient']:+.4f}")
 
-    probs = best_model.predict_proba(X_test)[:, 1]
+    X_test_scaled = scaler.transform(X_test)
+    probs = best_model.predict_proba(X_test_scaled)[:, 1]
     preds = (probs >= 0.5).astype(int)
 
     overall = compute_metrics(y_test, probs)
 
     print_metrics("Test metrics across all valid minutes", overall)
 
-    brier = save_calibration_plot(y_test, probs, CALIBRATION_PLOT_FILE, "XGBoost win probability")
+    brier = save_calibration_plot(y_test, probs, CALIBRATION_PLOT_FILE, "Logistic regression win probability")
     print("Saved calibration curve to:", CALIBRATION_PLOT_FILE, f"(Brier={brier:.4f})")
 
     pred_df = test_df[["match_id", "minute", "target"]].copy()
@@ -320,7 +298,7 @@ def main():
 
     MODEL_FILE.parent.mkdir(parents=True, exist_ok=True)
     PREDICTIONS_FILE.parent.mkdir(parents=True, exist_ok=True)
-    best_model.save_model(MODEL_FILE)
+    joblib.dump({"scaler": scaler, "model": best_model}, MODEL_FILE)
     pred_df.to_parquet(PREDICTIONS_FILE, index=False)
 
     print()

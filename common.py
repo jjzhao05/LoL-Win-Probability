@@ -1,26 +1,13 @@
-"""Shared constants and helpers used by the feature-engineering and training scripts.
-
-Centralizing these avoids the role/team/objective/tower-part lists (and the
-minute-bucket evaluation logic) silently drifting apart between the XGBoost
-and LSTM sides of the pipeline, which previously each carried their own copy.
-"""
-
 from pathlib import Path
 
 import numpy as np
-import pandas as pd
 from sklearn.calibration import calibration_curve
 from sklearn.metrics import accuracy_score, brier_score_loss, log_loss, roc_auc_score
 
-# --------------------------------------------------------------------------
-# Shared identifiers
-# --------------------------------------------------------------------------
 
 ROLES = ["top", "jg", "mid", "bot", "sup"]
 TEAMS = [100, 200]
 
-# Per-player counting stats aggregated to team/role level. Kept identical
-# across the XGBoost (polars) and LSTM (pandas) feature builders.
 BASIC_STATS = [
     "current_gold",
     "total_gold",
@@ -37,9 +24,6 @@ BASIC_STATS = [
     "control_wards_placed",
 ]
 
-# Extra per-player damage stats. Only used by the XGBoost feature builder
-# today (the LSTM builder intentionally sticks to BASIC_STATS to keep its
-# input width down) -- kept here so both scripts read from one definition.
 DAMAGE_STATS = [
     "magic_damage_done",
     "magic_damage_done_to_champions",
@@ -84,12 +68,7 @@ VAL_SIZE = 0.20
 SPLIT_FILE = Path("results/shared_split_ids.npz")
 
 
-# --------------------------------------------------------------------------
-# Shared evaluation helpers
-# --------------------------------------------------------------------------
-
 def compute_metrics(y_true, probs):
-    """Standard classification + calibration metrics for a probability model."""
     preds = (probs >= 0.5).astype(int)
 
     return {
@@ -114,11 +93,6 @@ def print_metrics(name, metrics):
 
 def evaluate_by_minute_bucket(pred_df, prob_col, target_col="target", minute_col="minute",
                                buckets=MINUTE_BUCKETS):
-    """Bucket a long-format (one row per match/minute) prediction frame by minute.
-
-    Used identically by the XGBoost and LSTM evaluation scripts so the two
-    models are always scored with the same bucket boundaries and metrics.
-    """
     rows = []
 
     for start, end in buckets:
@@ -164,11 +138,6 @@ def print_bucket_rows(rows):
 
 
 def save_calibration_plot(y_true, probs, out_path, title, n_bins=10):
-    """Save a reliability diagram and return the Brier score.
-
-    A win-probability model lives and dies by calibration (does "70%" really
-    win 70% of the time?), which AUC/log-loss/accuracy alone don't surface.
-    """
     import matplotlib.pyplot as plt
 
     out_path = Path(out_path)
@@ -196,25 +165,6 @@ def save_calibration_plot(y_true, probs, out_path, title, n_bins=10):
 
 
 def infer_monotone_constraints(feature_names):
-    """Heuristic +1/-1 monotone-constraint direction per feature, for XGBoost.
-
-    Every retained feature in the engineered dataset is either already a
-    team_100-minus-team_200 difference (e.g. "*_diff", "*_share",
-    "*_per_min") or an absolute count that is namespaced by team via a
-    "_100_" / "_200_" substring (e.g. "top_outer_100_destroyed",
-    "team_100_first_blood_so_far"), including the "_delta_1min"/"_delta_3min"
-    momentum versions of both. In every case, higher values should never
-    make Team 100 *less* likely to win, so:
-
-      - a column that references team 200 without also referencing team 100
-        gets a decreasing (-1) constraint (more stuff for the enemy team is
-        never good for Team 100), and
-      - everything else (already-differenced columns, and columns
-        referencing team 100) gets an increasing (+1) constraint.
-
-    This is a naming-convention heuristic, not a hand-authored mapping, so it
-    stays correct automatically as engineered columns are added or removed.
-    """
     constraints = []
     for col in feature_names:
         if "_200_" in col and "_100_" not in col:

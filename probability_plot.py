@@ -8,16 +8,13 @@ from common import RANDOM_STATE, TEAMS, TOWER_PARTS
 
 
 XGB_PREDICTIONS_FILE = Path("results/xgb_predictions.parquet")
-LSTM_PREDICTIONS_FILE = Path("results/lstm_predictions.npz")
+LOGREG_PREDICTIONS_FILE = Path("results/logreg_predictions.parquet")
 FULL_DATA_FILE = Path("data/full_dataset.parquet")
 
-OUTPUT_DIR = Path("figures/xgb_vs_lstm_labeled_plots")
+OUTPUT_DIR = Path("figures/xgb_vs_logreg_labeled_plots")
 
 N_MATCHES = 30
 
-# Deliberately excludes "plates" (unlike common.OBJECTIVES): plate gold is a
-# minor economic tick, not a game-shaping objective worth annotating on the
-# probability chart.
 OBJECTIVES = ["dragons", "heralds", "barons", "elders"]
 
 
@@ -41,39 +38,24 @@ def load_xgb_predictions():
     return df
 
 
-def load_lstm_predictions():
-    data = np.load(LSTM_PREDICTIONS_FILE, allow_pickle=True)
+def load_logreg_predictions():
+    df = pd.read_parquet(LOGREG_PREDICTIONS_FILE)
 
     required = {
-        "probs_test",
-        "y_test",
-        "mask_test",
-        "match_ids_test",
+        "match_id",
+        "minute",
+        "target",
+        "pred_prob_team_100_win",
     }
 
-    missing = required - set(data.files)
+    missing = required - set(df.columns)
 
     if missing:
-        raise ValueError(f"Missing LSTM prediction arrays: {sorted(missing)}")
+        raise ValueError(f"Missing logistic regression prediction columns: {sorted(missing)}")
 
-    probs = data["probs_test"]
-    y = data["y_test"]
-    mask = data["mask_test"]
-    match_ids = data["match_ids_test"].astype(str)
+    df["match_id"] = df["match_id"].astype(str)
 
-    rows = []
-
-    for i, match_id in enumerate(match_ids):
-        for t in range(probs.shape[1]):
-            if mask[i, t] == 1:
-                rows.append({
-                    "match_id": match_id,
-                    "minute": t + 1,
-                    "target": int(y[i]),
-                    "lstm_prob_team_100_win": float(probs[i, t]),
-                })
-
-    return pd.DataFrame(rows)
+    return df.rename(columns={"pred_prob_team_100_win": "logreg_prob_team_100_win"})
 
 
 def load_full_data():
@@ -210,9 +192,9 @@ def get_event_rows(full_df, match_id):
     return events
 
 
-def merge_predictions(xgb_df, lstm_df):
+def merge_predictions(xgb_df, logreg_df):
     merged = xgb_df.merge(
-        lstm_df[["match_id", "minute", "lstm_prob_team_100_win"]],
+        logreg_df[["match_id", "minute", "logreg_prob_team_100_win"]],
         on=["match_id", "minute"],
         how="inner",
     )
@@ -265,7 +247,7 @@ def plot_match(match_df, full_df, match_id):
 
     minutes = g["minute"].to_numpy()
     xgb_probs = g["pred_prob_team_100_win"].to_numpy()
-    lstm_probs = g["lstm_prob_team_100_win"].to_numpy()
+    logreg_probs = g["logreg_prob_team_100_win"].to_numpy()
 
     fig, ax = plt.subplots(figsize=(16, 7))
 
@@ -279,10 +261,10 @@ def plot_match(match_df, full_df, match_id):
 
     ax.plot(
         minutes,
-        lstm_probs,
+        logreg_probs,
         linewidth=2,
         linestyle="--",
-        label="LSTM",
+        label="Logistic Regression",
         color="orange",
     )
 
@@ -318,7 +300,7 @@ def plot_match(match_df, full_df, match_id):
         annotate_events(ax, events)
 
     ax.set_title(
-        f"XGBoost vs LSTM Win Probability | Match {match_id} | Winner: {winner}",
+        f"XGBoost vs Logistic Regression Win Probability | Match {match_id} | Winner: {winner}",
         fontsize=14,
     )
 
@@ -341,7 +323,7 @@ def plot_match(match_df, full_df, match_id):
 
     plt.tight_layout()
 
-    out_file = OUTPUT_DIR / f"xgb_vs_lstm_labeled_{match_id}.png"
+    out_file = OUTPUT_DIR / f"xgb_vs_logreg_labeled_{match_id}.png"
 
     plt.savefig(out_file, dpi=150)
     plt.close()
@@ -350,18 +332,11 @@ def plot_match(match_df, full_df, match_id):
 
 
 def clear_output_dir():
-    """Remove PNGs from a previous run before writing this run's sample.
-
-    Without this, re-running with a different random sample of matches (e.g.
-    because the underlying predictions changed) leaves stale plots from the
-    old sample sitting alongside the new ones, so the folder silently
-    accumulates more files than N_MATCHES actually asks for.
-    """
     if not OUTPUT_DIR.exists():
         return
 
     removed = 0
-    for path in OUTPUT_DIR.glob("xgb_vs_lstm_labeled_*.png"):
+    for path in OUTPUT_DIR.glob("xgb_vs_logreg_labeled_*.png"):
         path.unlink()
         removed += 1
 
@@ -374,15 +349,15 @@ def main():
     clear_output_dir()
 
     xgb_df = load_xgb_predictions()
-    lstm_df = load_lstm_predictions()
+    logreg_df = load_logreg_predictions()
     full_df = load_full_data()
 
-    merged = merge_predictions(xgb_df, lstm_df)
+    merged = merge_predictions(xgb_df, logreg_df)
 
     common_matches = sorted(merged["match_id"].unique())
 
     if not common_matches:
-        raise ValueError("No common matches found between XGBoost and LSTM predictions.")
+        raise ValueError("No common matches found between XGBoost and logistic regression predictions.")
 
     rng = np.random.default_rng(RANDOM_STATE)
 

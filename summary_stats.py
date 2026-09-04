@@ -7,23 +7,8 @@ import pandas as pd
 
 ROLES = ["top", "jg", "mid", "bot", "sup"]
 TEAMS = ["100", "200"]
-SNOWBALL_TIME_SEC = 900  # 15 minutes
+SNOWBALL_TIME_SEC = 900
 
-# ---------------------------------------------------------------------
-# Directory setup
-#
-# Expected project structure:
-#
-# project/
-#   data/
-#     full_dataset.parquet
-#   lol_data/
-#     champion_map.json
-#     summoner_spell_map.json
-#     rune_style_map.json
-#     perk_map.json
-#   summary_stats.py
-# ---------------------------------------------------------------------
 BASE_DIR = Path(__file__).resolve().parent
 DATA_DIR = BASE_DIR / "data"
 LOOKUP_DIR = BASE_DIR / "lol_data"
@@ -104,10 +89,6 @@ def load_dataset() -> pd.DataFrame:
 
 
 def win_rate_when(df, cond_100_has_it, cond_200_has_it):
-    """
-    Win rate for the team that secured an objective, among games where
-    exactly one team clearly secured or led that objective.
-    """
     only_100 = cond_100_has_it & ~cond_200_has_it
     only_200 = cond_200_has_it & ~cond_100_has_it
 
@@ -125,7 +106,6 @@ def win_rate_when(df, cond_100_has_it, cond_200_has_it):
 def main():
     raw_df = load_dataset()
 
-    # Final snapshot per match, one row per game
     df = raw_df.sort_values("timestamp_sec").drop_duplicates("match_id", keep="last").copy()
 
     n_games = len(df)
@@ -134,9 +114,6 @@ def main():
 
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
-    # =================================================================
-    # 1. OVERALL SUMMARY STATS
-    # =================================================================
     longest = df.loc[df["game_duration_sec"].idxmax()]
     shortest = df.loc[df["game_duration_sec"].idxmin()]
 
@@ -171,9 +148,6 @@ def main():
         ("pct_games_with_baron", round(((df["barons_100"] + df["barons_200"]) > 0).mean() * 100, 1)),
     ]
 
-    # =================================================================
-    # 2. OBJECTIVE IMPACT ON WIN RATE
-    # =================================================================
     obj_rows = []
 
     wr, n = win_rate_when(
@@ -217,9 +191,6 @@ def main():
     )
     objective_impact.to_csv(OUTPUT_DIR / "objective_impact.csv", index=False)
 
-    # =================================================================
-    # 3. SNOWBALL STATS
-    # =================================================================
     raw_df = raw_df.copy()
     raw_df["dist_to_15min"] = (raw_df["timestamp_sec"] - SNOWBALL_TIME_SEC).abs()
 
@@ -273,9 +244,6 @@ def main():
     rows.append(("num_comeback_wins_from_1000plus_gold_deficit_at_15min", n_comebacks))
     rows.append(("pct_games_that_were_comebacks", round(n_comebacks / n_games * 100, 1) if n_games else None))
 
-    # =================================================================
-    # 4. NOTABLE GAMES
-    # =================================================================
     comeback_candidates = snap15.copy()
 
     def comeback_margin(row):
@@ -314,9 +282,6 @@ def main():
     summary_df = pd.DataFrame(rows, columns=["stat", "value"])
     summary_df.to_csv(OUTPUT_DIR / "summary_stats.csv", index=False)
 
-    # =================================================================
-    # 5. CHAMPION PICK AND WIN STATS
-    # =================================================================
     champ_records = []
 
     for role in ROLES:
@@ -348,9 +313,6 @@ def main():
     champ_stats.insert(1, "champion_name", champ_stats["champion_id"].apply(champ_name))
     champ_stats.to_csv(OUTPUT_DIR / "champion_stats.csv", index=False)
 
-    # =================================================================
-    # 6. BAN STATS
-    # =================================================================
     ban_ids = pd.concat(
         [
             df["team_100_bans"].astype(str).str.split("|").explode(),
@@ -365,9 +327,6 @@ def main():
     ban_stats.insert(1, "champion_name", ban_stats["champion_id"].apply(champ_name))
     ban_stats.to_csv(OUTPUT_DIR / "ban_stats.csv", index=False)
 
-    # =================================================================
-    # 7. ROLE STATS
-    # =================================================================
     role_rows = []
 
     for role in ROLES:
@@ -400,9 +359,6 @@ def main():
     role_stats = pd.DataFrame(role_rows)
     role_stats.to_csv(OUTPUT_DIR / "role_stats.csv", index=False)
 
-    # =================================================================
-    # 8. SUMMONER SPELL STATS
-    # =================================================================
     spell_ids = pd.concat(
         [df[f"{role}_{team}_summoner1_id"] for role in ROLES for team in TEAMS]
         + [df[f"{role}_{team}_summoner2_id"] for role in ROLES for team in TEAMS]
@@ -413,9 +369,6 @@ def main():
     spell_stats.insert(1, "spell_name", spell_stats["spell_id"].apply(spell_name))
     spell_stats.to_csv(OUTPUT_DIR / "summoner_spell_stats.csv", index=False)
 
-    # =================================================================
-    # 9. RUNE STATS
-    # =================================================================
     style_ids = pd.concat([df[f"{role}_{team}_primary_style"] for role in ROLES for team in TEAMS])
 
     style_stats = style_ids.value_counts().reset_index()
@@ -430,9 +383,6 @@ def main():
     keystone_stats.insert(1, "keystone_name", keystone_stats["keystone_id"].apply(perk_name))
     keystone_stats.to_csv(OUTPUT_DIR / "keystone_stats.csv", index=False)
 
-    # =================================================================
-    # 10. PATCH STATS
-    # =================================================================
     patch_stats = (
         df.groupby("patch")
         .agg(
@@ -447,9 +397,6 @@ def main():
     patch_stats["team_100_win_rate"] = patch_stats["team_100_win_rate"].round(4)
     patch_stats.to_csv(OUTPUT_DIR / "patch_stats.csv", index=False)
 
-    # =================================================================
-    # PRINT EVERYTHING
-    # =================================================================
     print("=" * 60)
     print("OVERALL SUMMARY STATS")
     print("=" * 60)

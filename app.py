@@ -1,25 +1,6 @@
-"""
-League of Legends Win-Probability Model -- interactive companion app.
-
-Three pages, picked from the sidebar:
-  1. Match Replay Explorer -- pick a held-out test match, watch XGBoost's and
-     the LSTM's win-probability curves over the course of the game, with
-     objective/tower events annotated (an interactive version of
-     probability_plot.py).
-  2. Model Performance Dashboard -- calibration curves, per-minute-bucket
-     metrics, feature importances, and hyperparameter grid search results for
-     both models.
-  3. Live What-If Predictor -- move a handful of macro sliders (gold/xp/cs
-     lead, objectives, towers) and get a live XGBoost win-probability read
-     out, useful for building intuition about which signals move the model.
-
-Run with:  streamlit run app.py
-(from the project root, after main.py / the individual train scripts have
-been run at least once so the files below exist.)
-"""
-
 from pathlib import Path
 
+import joblib
 import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
@@ -33,28 +14,30 @@ from common import (
     evaluate_by_minute_bucket,
 )
 
-# --------------------------------------------------------------------------
-# File locations (all local to the project folder -- this app is meant to be
-# run from the repo root, reading the artifacts the pipeline scripts wrote).
-# --------------------------------------------------------------------------
-
 XGB_PREDICTIONS_FILE = Path("results/xgb_predictions.parquet")
-LSTM_PREDICTIONS_FILE = Path("results/lstm_predictions.npz")
+LOGREG_PREDICTIONS_FILE = Path("results/logreg_predictions.parquet")
 FULL_DATA_FILE = Path("data/full_dataset.parquet")
+
 XGB_MODEL_FILE = Path("models/xgb_model.json")
+LOGREG_MODEL_FILE = Path("models/logreg_model.joblib")
+
 XGB_FEATURE_IMPORTANCE_CSV = Path("results/xgb_feature_importances.csv")
+LOGREG_FEATURE_IMPORTANCE_CSV = Path("results/logreg_feature_importances.csv")
+
 XGB_CALIBRATION_IMG = Path("figures/xgb_calibration_curve.png")
-LSTM_CALIBRATION_IMG = Path("figures/lstm_calibration_curve.png")
+LOGREG_CALIBRATION_IMG = Path("figures/logreg_calibration_curve.png")
+
 XGB_GRID_RESULTS = Path("results/xgb_grid_search_results.csv")
-LSTM_GRID_RESULTS = Path("results/lstm_grid_search_results.csv")
+LOGREG_GRID_RESULTS = Path("results/logreg_grid_search_results.csv")
+
 RUN_TIMES_FILE = Path("results/run_times.csv")
+
+ABLATION_RESULTS_FILE = Path("results/ablation_results.csv")
+ABLATION_BOOTSTRAP_FILE = Path("results/ablation_bootstrap_cis.csv")
+ABLATION_CLOSENESS_FILE = Path("results/ablation_closeness_breakdown.csv")
 
 OBJECTIVES = ["dragons", "heralds", "barons", "elders"]
 
-
-# --------------------------------------------------------------------------
-# Cached loaders
-# --------------------------------------------------------------------------
 
 @st.cache_data
 def load_xgb_predictions():
@@ -62,44 +45,24 @@ def load_xgb_predictions():
         return None
     df = pd.read_parquet(XGB_PREDICTIONS_FILE)
     df["match_id"] = df["match_id"].astype(str)
-    # xgboost_train.py's "minute" comes from timestamp_sec / 60 and is
-    # occasionally fractional for a match's final frame (e.g. 73.13). The
-    # LSTM side's minute is always an integer sequence position, so an
-    # unrounded merge on "minute" silently drops those trailing frames.
     df["minute"] = df["minute"].round().astype(int)
     return df
 
 
 @st.cache_data
-def load_lstm_predictions():
-    if not LSTM_PREDICTIONS_FILE.exists():
+def load_logreg_predictions():
+    if not LOGREG_PREDICTIONS_FILE.exists():
         return None
-
-    data = np.load(LSTM_PREDICTIONS_FILE, allow_pickle=True)
-    probs = data["probs_test"]
-    y = data["y_test"]
-    mask = data["mask_test"]
-    match_ids = data["match_ids_test"].astype(str)
-
-    rows = []
-    for i, match_id in enumerate(match_ids):
-        for t in range(probs.shape[1]):
-            if mask[i, t] == 1:
-                rows.append({
-                    "match_id": match_id,
-                    "minute": t + 1,
-                    "target": int(y[i]),
-                    "lstm_prob_team_100_win": float(probs[i, t]),
-                })
-
-    return pd.DataFrame(rows)
+    df = pd.read_parquet(LOGREG_PREDICTIONS_FILE)
+    df["match_id"] = df["match_id"].astype(str)
+    df["minute"] = df["minute"].round().astype(int)
+    return df
 
 
 @st.cache_data
 def load_full_data():
     if not FULL_DATA_FILE.exists():
         return None
-
     df = pd.read_parquet(FULL_DATA_FILE)
     df["match_id"] = df["match_id"].astype(str)
     df["minute"] = (df["timestamp_sec"] / 60).round().astype(int)
@@ -115,6 +78,13 @@ def load_xgb_model():
     return booster
 
 
+@st.cache_resource
+def load_logreg_model():
+    if not LOGREG_MODEL_FILE.exists():
+        return None
+    return joblib.load(LOGREG_MODEL_FILE)
+
+
 @st.cache_data
 def load_csv_if_exists(path):
     if not Path(path).exists():
@@ -122,18 +92,15 @@ def load_csv_if_exists(path):
     return pd.read_csv(path)
 
 
-def merge_predictions(xgb_df, lstm_df):
+def merge_predictions(xgb_df, logreg_df):
+    logreg_df = logreg_df.rename(columns={"pred_prob_team_100_win": "logreg_prob_team_100_win"})
     merged = xgb_df.merge(
-        lstm_df[["match_id", "minute", "lstm_prob_team_100_win"]],
+        logreg_df[["match_id", "minute", "logreg_prob_team_100_win"]],
         on=["match_id", "minute"],
         how="inner",
     )
     return merged.sort_values(["match_id", "minute"])
 
-
-# --------------------------------------------------------------------------
-# Page 1: Match Replay Explorer
-# --------------------------------------------------------------------------
 
 def add_tower_totals(df):
     df = df.copy()
@@ -193,28 +160,22 @@ def get_event_rows(full_df, match_id):
     )
 
 
-def render_match_replay():
-    st.header("Match Replay Explorer")
-    st.caption(
-        "Pick a held-out test match and watch how each model's predicted win "
-        "probability moved over the course of the game."
-    )
-
+def render_real_match_tab():
     xgb_pred = load_xgb_predictions()
-    lstm_pred = load_lstm_predictions()
+    logreg_pred = load_logreg_predictions()
 
-    if xgb_pred is None or lstm_pred is None:
+    if xgb_pred is None or logreg_pred is None:
         st.warning(
-            "Missing `xgb_predictions.parquet` and/or `lstm_predictions.npz`. "
-            "Run `xgboost_train.py` and `lstm_train.py` first."
+            "Missing `xgb_predictions.parquet` and/or `logreg_predictions.parquet`. "
+            "Run `xgboost_train.py` and `logistic_regression_train.py` first."
         )
         return
 
-    merged = merge_predictions(xgb_pred, lstm_pred)
+    merged = merge_predictions(xgb_pred, logreg_pred)
     common_matches = sorted(merged["match_id"].unique())
 
     if not common_matches:
-        st.error("No matches are common to both the XGBoost and LSTM test predictions.")
+        st.error("No matches are common to both the XGBoost and logistic regression test predictions.")
         return
 
     match_id = st.selectbox("Test match", common_matches)
@@ -237,9 +198,9 @@ def render_match_replay():
         hovertemplate="minute %{x}<br>XGBoost: %{y:.1%}<extra></extra>",
     ))
     fig.add_trace(go.Scatter(
-        x=g["minute"], y=g["lstm_prob_team_100_win"],
-        mode="lines", name="LSTM", line=dict(color="orange", width=3, dash="dash"),
-        hovertemplate="minute %{x}<br>LSTM: %{y:.1%}<extra></extra>",
+        x=g["minute"], y=g["logreg_prob_team_100_win"],
+        mode="lines", name="Logistic Regression", line=dict(color="orange", width=3, dash="dash"),
+        hovertemplate="minute %{x}<br>Logistic Regression: %{y:.1%}<extra></extra>",
     ))
     fig.add_hline(y=0.5, line_color="black", line_width=1)
 
@@ -265,7 +226,7 @@ def render_match_replay():
             title="Blue-side win probability",
         ),
         xaxis_title="Game minute",
-        title=f"XGBoost vs LSTM | Match {match_id} | Winner: {winner}",
+        title=f"XGBoost vs Logistic Regression | Match {match_id} | Winner: {winner}",
         legend=dict(orientation="h", yanchor="bottom", y=1.02, x=1, xanchor="right"),
         height=520,
         margin=dict(t=80),
@@ -274,124 +235,7 @@ def render_match_replay():
     st.plotly_chart(fig, width="stretch")
 
 
-# --------------------------------------------------------------------------
-# Page 2: Model Performance Dashboard
-# --------------------------------------------------------------------------
-
-def render_dashboard():
-    st.header("Model Performance Dashboard")
-
-    xgb_pred = load_xgb_predictions()
-    lstm_pred = load_lstm_predictions()
-
-    col1, col2 = st.columns(2)
-    with col1:
-        st.subheader("XGBoost calibration")
-        if XGB_CALIBRATION_IMG.exists():
-            st.image(str(XGB_CALIBRATION_IMG), width="stretch")
-        else:
-            st.info("Run `xgboost_train.py` to generate `xgb_calibration_curve.png`.")
-    with col2:
-        st.subheader("LSTM calibration")
-        if LSTM_CALIBRATION_IMG.exists():
-            st.image(str(LSTM_CALIBRATION_IMG), width="stretch")
-        else:
-            st.info("Run `lstm_train.py` to generate `lstm_calibration_curve.png`.")
-
-    st.subheader("Performance by minute bucket")
-    if xgb_pred is not None:
-        xgb_buckets = evaluate_by_minute_bucket(
-            xgb_pred, prob_col="pred_prob_team_100_win", buckets=MINUTE_BUCKETS
-        )
-        xgb_bucket_df = pd.DataFrame(xgb_buckets).rename(columns=lambda c: f"xgb_{c}" if c != "minutes" else c)
-    else:
-        xgb_bucket_df = None
-
-    if lstm_pred is not None:
-        lstm_buckets = evaluate_by_minute_bucket(
-            lstm_pred, prob_col="lstm_prob_team_100_win", buckets=MINUTE_BUCKETS
-        )
-        lstm_bucket_df = pd.DataFrame(lstm_buckets).rename(columns=lambda c: f"lstm_{c}" if c != "minutes" else c)
-    else:
-        lstm_bucket_df = None
-
-    if xgb_bucket_df is not None and lstm_bucket_df is not None:
-        combined = xgb_bucket_df.merge(lstm_bucket_df, on="minutes", how="outer")
-
-        fig = go.Figure()
-        fig.add_trace(go.Scatter(x=combined["minutes"], y=combined["xgb_auc"], name="XGBoost AUC", mode="lines+markers"))
-        fig.add_trace(go.Scatter(x=combined["minutes"], y=combined["lstm_auc"], name="LSTM AUC", mode="lines+markers"))
-        fig.update_layout(yaxis_title="AUC", xaxis_title="Game minute bucket", height=380)
-        st.plotly_chart(fig, width="stretch")
-
-        st.dataframe(
-            combined[["minutes", "xgb_rows", "xgb_auc", "xgb_log_loss", "xgb_accuracy", "xgb_brier",
-                      "lstm_rows", "lstm_auc", "lstm_log_loss", "lstm_accuracy", "lstm_brier"]]
-            .round(4),
-            width="stretch",
-        )
-    else:
-        st.info("Need both `xgb_predictions.parquet` and `lstm_predictions.npz` for this comparison.")
-
-    st.subheader("XGBoost feature importance")
-    imp_df = load_csv_if_exists(XGB_FEATURE_IMPORTANCE_CSV)
-    if imp_df is not None:
-        top_n = st.slider("Show top N features", 5, 50, 20)
-        top = imp_df.sort_values("gain", ascending=False).head(top_n).iloc[::-1]
-        fig = go.Figure(go.Bar(x=top["gain"], y=top["feature"], orientation="h"))
-        fig.update_layout(
-            xaxis_title="Gain (avg loss reduction per split)",
-            height=max(400, 22 * len(top)),
-            margin=dict(l=220),
-        )
-        st.plotly_chart(fig, width="stretch")
-        with st.expander("Full feature importance table"):
-            st.dataframe(imp_df.sort_values("gain", ascending=False), width="stretch")
-    else:
-        st.info("Run `xgboost_train.py` (current version) to generate `xgb_feature_importances.csv`.")
-
-    st.subheader("Hyperparameter grid search")
-    gcol1, gcol2 = st.columns(2)
-    with gcol1:
-        st.markdown("**XGBoost**")
-        xgb_grid = load_csv_if_exists(XGB_GRID_RESULTS)
-        if xgb_grid is not None:
-            st.dataframe(
-                xgb_grid.sort_values("val_log_loss").reset_index(drop=True),
-                width="stretch",
-            )
-        else:
-            st.info("`xgb_grid_search_results.csv` not found.")
-    with gcol2:
-        st.markdown("**LSTM**")
-        lstm_grid = load_csv_if_exists(LSTM_GRID_RESULTS)
-        if lstm_grid is not None:
-            st.dataframe(
-                lstm_grid.sort_values("val_log_loss").reset_index(drop=True),
-                width="stretch",
-            )
-        else:
-            st.info("`lstm_grid_search_results.csv` not found.")
-
-    run_times = load_csv_if_exists(RUN_TIMES_FILE)
-    if run_times is not None:
-        st.subheader("Last pipeline run times")
-        st.dataframe(run_times, width="stretch")
-
-
-# --------------------------------------------------------------------------
-# Page 3: Live What-If Predictor
-# --------------------------------------------------------------------------
-
-def build_feature_vector(booster, inputs):
-    """Build a full feature row for the model from a small set of macro
-    "what-if" sliders. Every feature the model was NOT given a slider for
-    (all per-role breakdowns, all 1-/3-minute momentum deltas, damage/vision
-    detail) is left at 0 -- i.e. "no additional information beyond the macro
-    team-level snapshot entered here". This is a deliberate simplification
-    for exploration, not a claim that those signals don't matter.
-    """
-    feature_names = booster.feature_names
+def build_feature_vector(feature_names, inputs):
     row = pd.Series(0.0, index=feature_names)
 
     minute = inputs["minute"]
@@ -419,10 +263,6 @@ def build_feature_vector(booster, inputs):
     if "cs_diff_per_min" in row.index:
         row["cs_diff_per_min"] = cs_diff / max(minute, 1)
 
-    # team_100_gold_share has no absolute-gold inputs available here, so it's
-    # approximated from the gold diff against a rough combined-team-gold
-    # baseline (~1600 gold/min combined at even game states). This is a
-    # simplification for the demo, not a recomputation of the real feature.
     if "team_100_gold_share" in row.index:
         baseline_total_gold = max(2 * 2500 + 1600 * minute, 1)
         row["team_100_gold_share"] = float(np.clip(0.5 + gold_diff / (2 * baseline_total_gold), 0.0, 1.0))
@@ -449,7 +289,7 @@ def build_feature_vector(booster, inputs):
         if key in row.index:
             row[key] = inputs.get(key, 0)
 
-    fb = inputs["first_blood"]  # "Blue", "Red", "Neither"
+    fb = inputs["first_blood"]
     if fb != "Neither":
         if "first_blood_diff" in row.index:
             row["first_blood_diff"] = 1 if fb == "Blue" else -1
@@ -470,17 +310,36 @@ def build_feature_vector(booster, inputs):
     return row
 
 
-def render_predictor():
-    st.header("Live What-If Predictor")
+def render_gauge(prob_blue, title):
+    fig = go.Figure(go.Indicator(
+        mode="gauge+number",
+        value=prob_blue * 100,
+        number={"suffix": "%"},
+        gauge={
+            "axis": {"range": [0, 100]},
+            "bar": {"color": "royalblue"},
+            "steps": [
+                {"range": [0, 50], "color": "#fde0e0"},
+                {"range": [50, 100], "color": "#dbe7fb"},
+            ],
+            "threshold": {"line": {"color": "black", "width": 2}, "value": 50},
+        },
+        title={"text": title},
+    ))
+    fig.update_layout(height=260, margin=dict(t=40, b=10))
+    return fig
+
+
+def render_custom_scenario_tab():
     st.caption(
-        "Set a macro game state and get a live XGBoost win-probability read. Only "
+        "Set a macro game state and get a live win-probability read from both models. Only "
         "the aggregate team-level signals below are controlled -- every per-role, "
-        "per-minute-momentum, and vision/damage-detail feature the model also uses "
-        "is held at a neutral 0, so treat this as a simplified sketch of the model's "
-        "behavior, not a full replica of the trained pipeline's prediction on a real game."
+        "per-minute-momentum, and vision/damage-detail feature each model also uses "
+        "is held at a neutral 0, so treat this as a simplified sketch of model behavior, "
+        "not a full replica of a real game."
     )
     st.info(
-        "**A real finding, not a UI bug:** this model leans overwhelmingly on the gold/XP "
+        "**A real finding, not a UI bug:** both models lean overwhelmingly on the gold/XP "
         "differential. With gold and XP lead left at 0, moving towers, objectives, or first "
         "blood alone barely changes the prediction -- gold/XP dominate hard enough that "
         "secondary signals mostly matter *through* the gold lead they typically come with, "
@@ -489,8 +348,10 @@ def render_predictor():
     )
 
     booster = load_xgb_model()
-    if booster is None:
-        st.warning("`xgb_model.json` not found. Run `xgboost_train.py` first.")
+    logreg = load_logreg_model()
+
+    if booster is None and logreg is None:
+        st.warning("No trained models found. Run `xgboost_train.py` and `logistic_regression_train.py` first.")
         return
 
     c1, c2, c3 = st.columns(3)
@@ -527,54 +388,230 @@ def render_predictor():
         "first_tower": first_tower,
     }
 
-    row = build_feature_vector(booster, inputs)
-    dmat = xgb.DMatrix(row.to_frame().T, feature_names=booster.feature_names)
-    prob_blue = float(booster.predict(dmat)[0])
-
     st.divider()
-    m1, m2 = st.columns([1, 2])
-    with m1:
-        st.metric("Blue win probability", f"{prob_blue:.1%}")
-        st.metric("Red win probability", f"{1 - prob_blue:.1%}")
-    with m2:
-        fig = go.Figure(go.Indicator(
-            mode="gauge+number",
-            value=prob_blue * 100,
-            number={"suffix": "%"},
-            gauge={
-                "axis": {"range": [0, 100]},
-                "bar": {"color": "royalblue"},
-                "steps": [
-                    {"range": [0, 50], "color": "#fde0e0"},
-                    {"range": [50, 100], "color": "#dbe7fb"},
-                ],
-                "threshold": {"line": {"color": "black", "width": 2}, "value": 50},
-            },
-            title={"text": "Blue-side win probability"},
+    m1, m2 = st.columns(2)
+
+    if booster is not None:
+        row = build_feature_vector(booster.feature_names, inputs)
+        dmat = xgb.DMatrix(row.to_frame().T, feature_names=booster.feature_names)
+        prob_blue_xgb = float(booster.predict(dmat)[0])
+        with m1:
+            st.subheader("XGBoost")
+            st.metric("Blue win probability", f"{prob_blue_xgb:.1%}")
+            st.plotly_chart(render_gauge(prob_blue_xgb, "XGBoost"), width="stretch")
+    else:
+        with m1:
+            st.warning("`xgb_model.json` not found. Run `xgboost_train.py` first.")
+
+    if logreg is not None:
+        feature_names = list(logreg["scaler"].feature_names_in_)
+        row = build_feature_vector(feature_names, inputs)
+        scaled = logreg["scaler"].transform(row.to_frame().T[feature_names])
+        prob_blue_logreg = float(logreg["model"].predict_proba(scaled)[0, 1])
+        with m2:
+            st.subheader("Logistic Regression")
+            st.metric("Blue win probability", f"{prob_blue_logreg:.1%}")
+            st.plotly_chart(render_gauge(prob_blue_logreg, "Logistic Regression"), width="stretch")
+    else:
+        with m2:
+            st.warning("`logreg_model.joblib` not found. Run `logistic_regression_train.py` first.")
+
+
+def render_explore_game():
+    st.header("Explore a Game")
+    st.caption(
+        "Watch how each model's predicted win probability moved over a real held-out "
+        "match, or build a custom scenario and see how both models read it."
+    )
+    real_tab, custom_tab = st.tabs(["Real Match", "Custom Scenario"])
+    with real_tab:
+        render_real_match_tab()
+    with custom_tab:
+        render_custom_scenario_tab()
+
+
+def render_ablation_headline():
+    st.subheader("Does the win-probability signal come from gold, or objectives?")
+    results = load_csv_if_exists(ABLATION_RESULTS_FILE)
+    bootstrap = load_csv_if_exists(ABLATION_BOOTSTRAP_FILE)
+
+    if results is None:
+        st.info("Run `ablation.py` to generate `ablation_results.csv`.")
+        return
+
+    fig = go.Figure()
+    variant_order = ["full", "no_economy", "no_objectives"]
+    variant_labels = {"full": "Full features", "no_economy": "No gold/XP/level", "no_objectives": "No objectives/towers"}
+    for model_name, group in results.groupby("model"):
+        group = group.set_index("variant").reindex(variant_order)
+        fig.add_trace(go.Bar(
+            x=[variant_labels[v] for v in variant_order],
+            y=group["auc"],
+            name=model_name,
         ))
-        fig.update_layout(height=280, margin=dict(t=40, b=10))
-        st.plotly_chart(fig, width="stretch")
+    fig.update_layout(
+        barmode="group", yaxis_title="Test AUC", yaxis=dict(range=[0.5, 1.0]),
+        height=420,
+    )
+    st.plotly_chart(fig, width="stretch")
+
+    if bootstrap is not None:
+        st.markdown("**Match-level bootstrap AUC gap from removing each feature group (95% CI):**")
+        display = bootstrap.copy()
+        display["ablation"] = display["ablation"].map(variant_labels).fillna(display["ablation"])
+        display["95% CI"] = display.apply(lambda r: f"[{r['ci_low']:.4f}, {r['ci_high']:.4f}]", axis=1)
+        st.dataframe(
+            display[["model", "ablation", "mean_gap", "95% CI", "n_boot"]].rename(
+                columns={"model": "Model", "ablation": "Removed", "mean_gap": "Mean AUC gap", "n_boot": "Bootstrap draws"}
+            ),
+            width="stretch",
+        )
 
 
-# --------------------------------------------------------------------------
-# App shell
-# --------------------------------------------------------------------------
+def render_closeness_breakdown():
+    st.subheader("Does objective control matter more in close games?")
+    closeness = load_csv_if_exists(ABLATION_CLOSENESS_FILE)
+    if closeness is None:
+        st.info("Run `ablation.py` to generate `ablation_closeness_breakdown.csv`.")
+        return
+
+    bucket_order = ["close", "medium", "blowout"]
+    fig = go.Figure()
+    for model_name, group in closeness.groupby("model"):
+        group = group.set_index("bucket").reindex(bucket_order)
+        fig.add_trace(go.Bar(x=bucket_order, y=group["auc_gap"], name=model_name))
+    fig.update_layout(
+        barmode="group",
+        xaxis_title="Game closeness (terciles of |gold diff|)",
+        yaxis_title="AUC gap from removing objectives/towers",
+        height=380,
+    )
+    st.plotly_chart(fig, width="stretch")
+    with st.expander("Full closeness breakdown table"):
+        st.dataframe(closeness, width="stretch")
+
+
+def render_calibration_and_importance():
+    st.subheader("Calibration")
+    col1, col2 = st.columns(2)
+    with col1:
+        st.markdown("**XGBoost**")
+        if XGB_CALIBRATION_IMG.exists():
+            st.image(str(XGB_CALIBRATION_IMG), width="stretch")
+        else:
+            st.info("Run `xgboost_train.py` to generate `xgb_calibration_curve.png`.")
+    with col2:
+        st.markdown("**Logistic Regression**")
+        if LOGREG_CALIBRATION_IMG.exists():
+            st.image(str(LOGREG_CALIBRATION_IMG), width="stretch")
+        else:
+            st.info("Run `logistic_regression_train.py` to generate `logreg_calibration_curve.png`.")
+
+    st.subheader("Feature importance")
+    top_n = st.slider("Show top N features", 5, 50, 20)
+
+    col1, col2 = st.columns(2)
+    with col1:
+        st.markdown("**XGBoost (gain)**")
+        imp_df = load_csv_if_exists(XGB_FEATURE_IMPORTANCE_CSV)
+        if imp_df is not None:
+            top = imp_df.sort_values("gain", ascending=False).head(top_n).iloc[::-1]
+            fig = go.Figure(go.Bar(x=top["gain"], y=top["feature"], orientation="h"))
+            fig.update_layout(height=max(400, 22 * len(top)), margin=dict(l=220))
+            st.plotly_chart(fig, width="stretch")
+        else:
+            st.info("Run `xgboost_train.py` to generate `xgb_feature_importances.csv`.")
+    with col2:
+        st.markdown("**Logistic Regression (|coefficient|)**")
+        imp_df = load_csv_if_exists(LOGREG_FEATURE_IMPORTANCE_CSV)
+        if imp_df is not None:
+            top = imp_df.sort_values("abs_coefficient", ascending=False).head(top_n).iloc[::-1]
+            colors = ["#1f77b4" if c >= 0 else "#d62728" for c in top["coefficient"]]
+            fig = go.Figure(go.Bar(x=top["coefficient"], y=top["feature"], orientation="h", marker_color=colors))
+            fig.update_layout(height=max(400, 22 * len(top)), margin=dict(l=220))
+            st.plotly_chart(fig, width="stretch")
+        else:
+            st.info("Run `logistic_regression_train.py` to generate `logreg_feature_importances.csv`.")
+
+
+def render_minute_bucket_comparison():
+    st.subheader("Performance by minute bucket")
+    xgb_pred = load_xgb_predictions()
+    logreg_pred = load_logreg_predictions()
+
+    if xgb_pred is None or logreg_pred is None:
+        st.info("Need both `xgb_predictions.parquet` and `logreg_predictions.parquet` for this comparison.")
+        return
+
+    xgb_buckets = evaluate_by_minute_bucket(xgb_pred, prob_col="pred_prob_team_100_win", buckets=MINUTE_BUCKETS)
+    xgb_bucket_df = pd.DataFrame(xgb_buckets).rename(columns=lambda c: f"xgb_{c}" if c != "minutes" else c)
+
+    logreg_buckets = evaluate_by_minute_bucket(logreg_pred, prob_col="pred_prob_team_100_win", buckets=MINUTE_BUCKETS)
+    logreg_bucket_df = pd.DataFrame(logreg_buckets).rename(columns=lambda c: f"logreg_{c}" if c != "minutes" else c)
+
+    combined = xgb_bucket_df.merge(logreg_bucket_df, on="minutes", how="outer")
+
+    fig = go.Figure()
+    fig.add_trace(go.Scatter(x=combined["minutes"], y=combined["xgb_auc"], name="XGBoost AUC", mode="lines+markers"))
+    fig.add_trace(go.Scatter(x=combined["minutes"], y=combined["logreg_auc"], name="Logistic Regression AUC", mode="lines+markers"))
+    fig.update_layout(yaxis_title="AUC", xaxis_title="Game minute bucket", height=380)
+    st.plotly_chart(fig, width="stretch")
+
+    st.dataframe(
+        combined[["minutes", "xgb_rows", "xgb_auc", "xgb_log_loss", "xgb_accuracy", "xgb_brier",
+                  "logreg_rows", "logreg_auc", "logreg_log_loss", "logreg_accuracy", "logreg_brier"]]
+        .round(4),
+        width="stretch",
+    )
+
+
+def render_pipeline_details():
+    with st.expander("Pipeline details: hyperparameter search and run times"):
+        gcol1, gcol2 = st.columns(2)
+        with gcol1:
+            st.markdown("**XGBoost**")
+            xgb_grid = load_csv_if_exists(XGB_GRID_RESULTS)
+            if xgb_grid is not None:
+                st.dataframe(xgb_grid.sort_values("val_log_loss").reset_index(drop=True), width="stretch")
+            else:
+                st.info("`xgb_grid_search_results.csv` not found.")
+        with gcol2:
+            st.markdown("**Logistic Regression**")
+            logreg_grid = load_csv_if_exists(LOGREG_GRID_RESULTS)
+            if logreg_grid is not None:
+                st.dataframe(logreg_grid.sort_values("val_log_loss").reset_index(drop=True), width="stretch")
+            else:
+                st.info("`logreg_grid_search_results.csv` not found.")
+
+        run_times = load_csv_if_exists(RUN_TIMES_FILE)
+        if run_times is not None:
+            st.markdown("**Last pipeline run times**")
+            st.dataframe(run_times, width="stretch")
+
+
+def render_findings():
+    st.header("Findings")
+    render_ablation_headline()
+    st.divider()
+    render_closeness_breakdown()
+    st.divider()
+    render_calibration_and_importance()
+    st.divider()
+    render_minute_bucket_comparison()
+    st.divider()
+    render_pipeline_details()
+
 
 def main():
     st.set_page_config(page_title="LoL Win Probability Model", layout="wide")
     st.title("League of Legends Win-Probability Model")
 
-    page = st.sidebar.radio(
-        "Page",
-        ["Match Replay Explorer", "Model Performance Dashboard", "Live What-If Predictor"],
-    )
+    page = st.sidebar.radio("Page", ["Explore a Game", "Findings"])
 
-    if page == "Match Replay Explorer":
-        render_match_replay()
-    elif page == "Model Performance Dashboard":
-        render_dashboard()
+    if page == "Explore a Game":
+        render_explore_game()
     else:
-        render_predictor()
+        render_findings()
 
 
 if __name__ == "__main__":
