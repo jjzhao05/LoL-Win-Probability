@@ -9,7 +9,6 @@ ROLES = ["top", "jg", "mid", "bot", "sup"]
 TEAMS = [100, 200]
 
 BASIC_STATS = [
-    "current_gold",
     "total_gold",
     "level",
     "xp",
@@ -21,7 +20,6 @@ BASIC_STATS = [
     "solo_kills",
     "wards_placed",
     "wards_killed",
-    "control_wards_placed",
 ]
 
 DAMAGE_STATS = [
@@ -35,6 +33,25 @@ DAMAGE_STATS = [
     "true_damage_done_to_champions",
     "true_damage_taken",
 ]
+
+# The "smart" subset of DAMAGE_STATS actually used as model features.
+# Damage *to champions* is the one damage signal that is not just a
+# restatement of gold/CS -- it can show a team out-fighting the other
+# side before that shows up as a kill or a gold lead. Damage done to
+# non-champion targets (mostly farm) and damage taken (mostly
+# itemization/tankiness) are left out to avoid recreating the same
+# overlap the rest of the feature set was trimmed of.
+COMBAT_DAMAGE_STATS = [
+    "magic_damage_done_to_champions",
+    "physical_damage_done_to_champions",
+    "true_damage_done_to_champions",
+]
+
+# Roles whose per-role diffs are restored alongside the team-level ones.
+# Note this reintroduces an exact linear dependency: each team_{stat}_diff
+# equals the sum of the five {role}_{stat}_diff columns below it, since
+# that's how the team total is built in the first place.
+PER_ROLE_BREAKOUT = ROLES
 
 OBJECTIVES = ["plates", "dragons", "heralds", "barons", "elders"]
 
@@ -51,6 +68,11 @@ TOWER_PARTS = [
     "nexus_tower_1",
     "nexus_tower_2",
 ]
+
+# Each team has one inhibitor per lane. Unlike towers these can respawn,
+# but the collected data only tracks whether a lane's inhibitor has ever
+# been destroyed by a given snapshot -- see collect_data.py.
+INHIB_LANES = ["top", "mid", "bot"]
 
 MINUTE_BUCKETS = [
     (1, 5),
@@ -165,9 +187,17 @@ def save_calibration_plot(y_true, probs, out_path, title, n_bins=10):
 
 
 def infer_monotone_constraints(feature_names):
+    """Direction each feature should push team 100's win probability.
+
+    Every feature here is a team-100-minus-team-200 diff, so "more of it
+    for team 100" should raise their win chance for almost every stat
+    (gold, kills, towers, dragons, ...). Deaths are the one basic stat
+    where that's backwards: more relative deaths for team 100 should
+    lower their win chance, so those columns get -1 instead of +1.
+    """
     constraints = []
     for col in feature_names:
-        if "_200_" in col and "_100_" not in col:
+        if "deaths" in col:
             constraints.append(-1)
         else:
             constraints.append(1)

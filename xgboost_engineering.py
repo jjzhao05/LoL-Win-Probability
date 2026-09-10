@@ -1,22 +1,47 @@
 from pathlib import Path
 
+import pandas as pd
 import polars as pl
 
-from common import BASIC_STATS, DAMAGE_STATS, OBJECTIVES, ROLES, TOWER_PARTS
+from common import BASIC_STATS, COMBAT_DAMAGE_STATS, INHIB_LANES, OBJECTIVES, PER_ROLE_BREAKOUT, ROLES, TOWER_PARTS
+from db import get_engine, MATCH_SNAPSHOTS_TABLE
 
 
-INPUT_FILE = Path("data/full_dataset.parquet")
 OUTPUT_FILE = Path("xgb_engineered/xgb_clean_dataset.parquet")
+
+# Stats that keep a team-level diff alongside their per-role diffs, even
+# though the team-level column is exactly the sum of the five role columns.
+# Limited to the stats app.py's custom-scenario sliders write to directly
+# (total_gold, xp, minions_killed, kills, assists, deaths). Every other
+# basic stat only exists at the per-role level, since nothing needs the
+# aggregate and keeping both is pure duplication.
+TEAM_LEVEL_STATS = {"total_gold", "xp", "minions_killed", "kills", "assists", "deaths"}
+
+
+def _tower_diff_groups():
+    """Map each output tower-diff column to the raw TOWER_PARTS columns it
+    sums. The two nexus towers are grouped into a single nexus_towers_diff
+    instead of two separate columns -- they are not meaningfully different
+    signals, both just say "the nexus is under attack"."""
+    groups = {}
+    for part in TOWER_PARTS:
+        name = "nexus_towers" if part.startswith("nexus_tower") else part
+        groups.setdefault(name, []).append(part)
+    return groups
+
+
+TOWER_DIFF_GROUPS = _tower_diff_groups()
+
+
+def load_lazyframe():
+    """Pull the raw match snapshots out of Postgres as a Polars LazyFrame."""
+    engine = get_engine()
+    df = pd.read_sql_table(MATCH_SNAPSHOTS_TABLE, engine)
+    return pl.from_pandas(df).lazy()
 
 
 def cols(lf):
     return set(lf.collect_schema().names())
-
-
-def safe_col(existing, name):
-    if name in existing:
-        return pl.col(name)
-    return pl.lit(0)
 
 
 def team_total(existing, team, stat):
@@ -31,6 +56,19 @@ def team_total(existing, team, stat):
 
 
 def add_features(lf):
+    """Per-role diffs for every basic stat (PER_ROLE_BREAKOUT, all five
+    roles), plus:
+
+    - a team-level diff too, but only for TEAM_LEVEL_STATS -- keeping the
+      team-level column for every stat would just duplicate the sum of its
+      five role columns, so it is limited to the handful of stats that
+      something downstream actually reads at the team level.
+    - one combined team-level diff, summed across COMBAT_DAMAGE_STATS
+      (magic + physical + true damage to champions), rather than a
+      column per damage type -- the total-damage-to-champions signal is
+      what isn't a restatement of gold/CS; splitting it by type mostly
+      just encodes team composition (AP vs. AD), not who's winning.
+    """
     existing = cols(lf)
 
     exprs = [
@@ -38,21 +76,30 @@ def add_features(lf):
         pl.col("team_100_win").cast(pl.Int8).alias("target"),
     ]
 
-    for stat in BASIC_STATS + DAMAGE_STATS:
+    for stat in BASIC_STATS:
+        if stat not in TEAM_LEVEL_STATS:
+            continue
+
         team_100 = team_total(existing, 100, stat)
         team_200 = team_total(existing, 200, stat)
-
-        exprs.append(team_100.alias(f"team_100_{stat}"))
-        exprs.append(team_200.alias(f"team_200_{stat}"))
         exprs.append((team_100 - team_200).alias(f"team_{stat}_diff"))
 
-    for role in ROLES:
-        for stat in BASIC_STATS + DAMAGE_STATS:
+    for role in PER_ROLE_BREAKOUT:
+        for stat in BASIC_STATS:
             c100 = f"{role}_100_{stat}"
             c200 = f"{role}_200_{stat}"
 
             if c100 in existing and c200 in existing:
                 exprs.append((pl.col(c100) - pl.col(c200)).alias(f"{role}_{stat}_diff"))
+
+    damage_100 = pl.lit(0)
+    damage_200 = pl.lit(0)
+
+    for stat in COMBAT_DAMAGE_STATS:
+        damage_100 = damage_100 + team_total(existing, 100, stat)
+        damage_200 = damage_200 + team_total(existing, 200, stat)
+
+    exprs.append((damage_100 - damage_200).alias("team_damage_done_to_champions_diff"))
 
     for obj in OBJECTIVES:
         c100 = f"{obj}_100"
@@ -63,155 +110,118 @@ def add_features(lf):
 
     lf = lf.with_columns(exprs)
 
-    lf = lf.with_columns(
-        [
-            (
-                pl.col("team_100_total_gold")
-                / (pl.col("team_100_total_gold") + pl.col("team_200_total_gold") + 1e-9)
-            ).alias("team_100_gold_share"),
-
-            (
-                pl.col("team_total_gold_diff")
-                / pl.max_horizontal(pl.col("minute"), pl.lit(1.0))
-            ).alias("gold_diff_per_min"),
-
-            (
-                pl.col("team_xp_diff")
-                / pl.max_horizontal(pl.col("minute"), pl.lit(1.0))
-            ).alias("xp_diff_per_min"),
-
-            (
-                (
-                    pl.col("team_minions_killed_diff")
-                    + pl.col("team_jungle_minions_killed_diff")
-                )
-                / pl.max_horizontal(pl.col("minute"), pl.lit(1.0))
-            ).alias("cs_diff_per_min"),
-        ]
-    )
-
     return lf
 
 
 def add_tower_features(lf):
+    """One diff column per tower group (top/mid/bot outer/inner/base, and
+    one combined nexus_towers_diff), plus an aggregate tower_diff -- so the
+    model can tell "lost the bot outer tower early" apart from "lost mid
+    base" instead of only seeing a total tower count."""
     existing = cols(lf)
 
-    def tower_sum(team):
-        expr = pl.lit(0)
+    part_exprs = []
+    total_100 = pl.lit(0)
+    total_200 = pl.lit(0)
 
-        for part in TOWER_PARTS:
-            col = f"{part}_{team}_destroyed"
-            if col in existing:
-                expr = expr + pl.col(col)
+    for name, parts in TOWER_DIFF_GROUPS.items():
+        group_100 = pl.lit(0)
+        group_200 = pl.lit(0)
+        found = False
 
-        return expr
+        for part in parts:
+            c100 = f"{part}_100_destroyed"
+            c200 = f"{part}_200_destroyed"
 
-    lf = lf.with_columns(
-        [
-            tower_sum(100).alias("team_100_towers_destroyed"),
-            tower_sum(200).alias("team_200_towers_destroyed"),
-        ]
-    )
+            if c100 in existing and c200 in existing:
+                group_100 = group_100 + pl.col(c100)
+                group_200 = group_200 + pl.col(c200)
+                found = True
 
-    lf = lf.with_columns(
-        (
-            pl.col("team_100_towers_destroyed")
-            - pl.col("team_200_towers_destroyed")
-        ).alias("tower_diff")
-    )
+        if found:
+            part_exprs.append((group_100 - group_200).alias(f"{name}_diff"))
+            total_100 = total_100 + group_100
+            total_200 = total_200 + group_200
+
+    lf = lf.with_columns(part_exprs)
+    lf = lf.with_columns((total_100 - total_200).alias("tower_diff"))
+
+    return lf
+
+
+def add_inhib_features(lf):
+    """One diff column per lane inhibitor, plus an aggregate inhib_diff --
+    same shape as add_tower_features."""
+    existing = cols(lf)
+
+    lane_exprs = []
+    total_100 = pl.lit(0)
+    total_200 = pl.lit(0)
+
+    for lane in INHIB_LANES:
+        c100 = f"{lane}_inhib_100_destroyed"
+        c200 = f"{lane}_inhib_200_destroyed"
+
+        if c100 in existing and c200 in existing:
+            lane_exprs.append((pl.col(c100) - pl.col(c200)).alias(f"{lane}_inhib_diff"))
+            total_100 = total_100 + pl.col(c100)
+            total_200 = total_200 + pl.col(c200)
+
+    lf = lf.with_columns(lane_exprs)
+    lf = lf.with_columns((total_100 - total_200).alias("inhib_diff"))
 
     return lf
 
 
 def add_event_features(lf):
+    """first_blood_diff / first_tower_diff only -- the per-team 'so far'
+    flags they're built from aren't kept, since the diff already encodes
+    both which team it was and that it happened."""
     existing = cols(lf)
 
     exprs = []
 
     if "first_blood_team" in existing and "first_blood_time_sec" in existing:
-        exprs.extend(
-            [
-                (
-                    (pl.col("first_blood_time_sec") <= pl.col("timestamp_sec"))
-                    & (pl.col("first_blood_team") == 100)
-                ).cast(pl.Int8).alias("team_100_first_blood_so_far"),
-
-                (
-                    (pl.col("first_blood_time_sec") <= pl.col("timestamp_sec"))
-                    & (pl.col("first_blood_team") == 200)
-                ).cast(pl.Int8).alias("team_200_first_blood_so_far"),
-            ]
-        )
+        happened = pl.col("first_blood_time_sec") <= pl.col("timestamp_sec")
+        got_it_100 = (happened & (pl.col("first_blood_team") == 100)).cast(pl.Int8)
+        got_it_200 = (happened & (pl.col("first_blood_team") == 200)).cast(pl.Int8)
+        exprs.append((got_it_100 - got_it_200).alias("first_blood_diff"))
 
     if "first_tower_team" in existing and "first_tower_time_sec" in existing:
-        exprs.extend(
-            [
-                (
-                    (pl.col("first_tower_time_sec") <= pl.col("timestamp_sec"))
-                    & (pl.col("first_tower_team") == 100)
-                ).cast(pl.Int8).alias("team_100_first_tower_so_far"),
-
-                (
-                    (pl.col("first_tower_time_sec") <= pl.col("timestamp_sec"))
-                    & (pl.col("first_tower_team") == 200)
-                ).cast(pl.Int8).alias("team_200_first_tower_so_far"),
-            ]
-        )
+        happened = pl.col("first_tower_time_sec") <= pl.col("timestamp_sec")
+        got_it_100 = (happened & (pl.col("first_tower_team") == 100)).cast(pl.Int8)
+        got_it_200 = (happened & (pl.col("first_tower_team") == 200)).cast(pl.Int8)
+        exprs.append((got_it_100 - got_it_200).alias("first_tower_diff"))
 
     if exprs:
         lf = lf.with_columns(exprs)
-
-    existing = cols(lf)
-
-    more = []
-
-    if "team_100_first_blood_so_far" in existing:
-        more.append(
-            (
-                pl.col("team_100_first_blood_so_far")
-                - pl.col("team_200_first_blood_so_far")
-            ).alias("first_blood_diff")
-        )
-
-    if "team_100_first_tower_so_far" in existing:
-        more.append(
-            (
-                pl.col("team_100_first_tower_so_far")
-                - pl.col("team_200_first_tower_so_far")
-            ).alias("first_tower_diff")
-        )
-
-    if more:
-        lf = lf.with_columns(more)
 
     return lf
 
 
 def add_momentum_features(lf):
-    feature_cols = [
-        c for c in cols(lf)
-        if c.endswith("_diff")
-        or c.endswith("_share")
-        or c.endswith("_per_min")
-        or c.endswith("_destroyed")
-    ]
+    """3-minute momentum only. A 1-minute delta is mostly noise at this
+    snapshot resolution and tracks its 3-minute sibling closely, so keeping
+    both just doubles the feature count for little extra signal.
+
+    Excluded here: first_blood_diff and first_tower_diff, step functions
+    that flip once per match, so their 3-minute delta is almost always 0;
+    and the individual tower/inhib diffs, whose aggregate (tower_diff,
+    inhib_diff) already gets a delta_3min covering the same ground."""
+    no_momentum = {"first_blood_diff", "first_tower_diff"}
+    no_momentum |= {f"{name}_diff" for name in TOWER_DIFF_GROUPS}
+    no_momentum |= {f"{lane}_inhib_diff" for lane in INHIB_LANES}
+
+    feature_cols = [c for c in cols(lf) if c.endswith("_diff") and c not in no_momentum]
 
     lf = lf.sort(["match_id", "timestamp_sec"])
 
-    exprs = []
-
-    for c in feature_cols:
-        exprs.append(
-            (pl.col(c) - pl.col(c).shift(1).over("match_id"))
-            .fill_null(0)
-            .alias(f"{c}_delta_1min")
-        )
-
-        exprs.append(
-            (pl.col(c) - pl.col(c).shift(3).over("match_id"))
-            .fill_null(0)
-            .alias(f"{c}_delta_3min")
-        )
+    exprs = [
+        (pl.col(c) - pl.col(c).shift(3).over("match_id"))
+        .fill_null(0)
+        .alias(f"{c}_delta_3min")
+        for c in feature_cols
+    ]
 
     return lf.with_columns(exprs)
 
@@ -228,13 +238,7 @@ def select_output_columns(lf):
 
     feature_cols = [
         c for c in existing
-        if c.endswith("_diff")
-        or c.endswith("_share")
-        or c.endswith("_per_min")
-        or c.endswith("_destroyed")
-        or c.endswith("_so_far")
-        or c.endswith("_delta_1min")
-        or c.endswith("_delta_3min")
+        if c.endswith("_diff") or c.endswith("_delta_3min")
     ]
 
     keep = keep + sorted(feature_cols)
@@ -243,12 +247,9 @@ def select_output_columns(lf):
 
 
 def main():
-    if not INPUT_FILE.exists():
-        raise FileNotFoundError(f"Missing input file: {INPUT_FILE}")
+    print(f"Reading from database table: {MATCH_SNAPSHOTS_TABLE}")
 
-    print(f"Reading: {INPUT_FILE}")
-
-    lf = pl.scan_parquet(INPUT_FILE)
+    lf = load_lazyframe()
 
     required = {"match_id", "timestamp_sec", "team_100_win"}
     missing = required - cols(lf)
@@ -258,6 +259,7 @@ def main():
 
     lf = add_features(lf)
     lf = add_tower_features(lf)
+    lf = add_inhib_features(lf)
     lf = add_event_features(lf)
     lf = add_momentum_features(lf)
     lf = select_output_columns(lf)
@@ -266,7 +268,7 @@ def main():
 
     print(f"Writing: {OUTPUT_FILE}")
 
-    lf.collect(streaming=True).write_parquet(
+    lf.collect().write_parquet(
         OUTPUT_FILE,
         compression="zstd",
         statistics=True,

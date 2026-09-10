@@ -2,6 +2,10 @@
 requests>=2.31
 python-dotenv>=1.0
 
+# Database (raw match snapshots live in Postgres)
+SQLAlchemy>=2.0
+psycopg2-binary>=2.9
+
 # Data handling / feature engineering
 pandas>=2.0
 numpy>=1.24

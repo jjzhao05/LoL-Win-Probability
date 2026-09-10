@@ -6,7 +6,6 @@ import csv
 
 
 SCRIPTS = [
-    "combine.py",
     "summary_stats.py",
     "xgboost_engineering.py",
     "xgboost_train.py",

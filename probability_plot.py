@@ -5,11 +5,11 @@ import pandas as pd
 import matplotlib.pyplot as plt
 
 from common import RANDOM_STATE, TEAMS, TOWER_PARTS
+from db import get_engine, MATCH_SNAPSHOTS_TABLE
 
 
 XGB_PREDICTIONS_FILE = Path("results/xgb_predictions.parquet")
 LOGREG_PREDICTIONS_FILE = Path("results/logreg_predictions.parquet")
-FULL_DATA_FILE = Path("data/full_dataset.parquet")
 
 OUTPUT_DIR = Path("figures/xgb_vs_logreg_labeled_plots")
 
@@ -59,7 +59,7 @@ def load_logreg_predictions():
 
 
 def load_full_data():
-    df = pd.read_parquet(FULL_DATA_FILE)
+    df = pd.read_sql_table(MATCH_SNAPSHOTS_TABLE, get_engine())
 
     required = {
         "match_id",

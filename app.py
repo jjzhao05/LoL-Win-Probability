@@ -13,10 +13,10 @@ from common import (
     TOWER_PARTS,
     evaluate_by_minute_bucket,
 )
+from db import get_engine, MATCH_SNAPSHOTS_TABLE
 
 XGB_PREDICTIONS_FILE = Path("results/xgb_predictions.parquet")
 LOGREG_PREDICTIONS_FILE = Path("results/logreg_predictions.parquet")
-FULL_DATA_FILE = Path("data/full_dataset.parquet")
 
 XGB_MODEL_FILE = Path("models/xgb_model.json")
 LOGREG_MODEL_FILE = Path("models/logreg_model.joblib")
@@ -61,9 +61,10 @@ def load_logreg_predictions():
 
 @st.cache_data
 def load_full_data():
-    if not FULL_DATA_FILE.exists():
+    try:
+        df = pd.read_sql_table(MATCH_SNAPSHOTS_TABLE, get_engine())
+    except Exception:
         return None
-    df = pd.read_parquet(FULL_DATA_FILE)
     df["match_id"] = df["match_id"].astype(str)
     df["minute"] = (df["timestamp_sec"] / 60).round().astype(int)
     return df.sort_values(["match_id", "timestamp_sec"])
@@ -215,8 +216,8 @@ def render_real_match_tab():
             )
     elif full_df is None:
         st.info(
-            "No `data/full_dataset.parquet` found -- showing win probability without "
-            "objective/tower event annotations."
+            f"Couldn't load the `{MATCH_SNAPSHOTS_TABLE}` table from the database -- "
+            "showing win probability without objective/tower event annotations."
         )
 
     fig.update_layout(
@@ -333,10 +334,9 @@ def render_gauge(prob_blue, title):
 def render_custom_scenario_tab():
     st.caption(
         "Set a macro game state and get a live win-probability read from both models. Only "
-        "the aggregate team-level signals below are controlled -- every per-role, "
-        "per-minute-momentum, and vision/damage-detail feature each model also uses "
-        "is held at a neutral 0, so treat this as a simplified sketch of model behavior, "
-        "not a full replica of a real game."
+        "the aggregate team-level signals below are controlled -- every 3-minute-momentum "
+        "feature each model also uses is held at a neutral 0, so treat this as a simplified "
+        "sketch of model behavior, not a full replica of a real game."
     )
     st.info(
         "**A real finding, not a UI bug:** both models lean overwhelmingly on the gold/XP "
@@ -440,8 +440,14 @@ def render_ablation_headline():
         return
 
     fig = go.Figure()
-    variant_order = ["full", "no_economy", "no_objectives"]
-    variant_labels = {"full": "Full features", "no_economy": "No gold/XP/level", "no_objectives": "No objectives/towers"}
+    variant_order = ["full", "no_economy", "no_objectives", "no_structures", "no_epic_monsters"]
+    variant_labels = {
+        "full": "Full features",
+        "no_economy": "No gold/XP/level",
+        "no_objectives": "No objectives/towers",
+        "no_structures": "No towers/plates",
+        "no_epic_monsters": "No dragons/heralds/barons/elders",
+    }
     for model_name, group in results.groupby("model"):
         group = group.set_index("variant").reindex(variant_order)
         fig.add_trace(go.Bar(
@@ -468,6 +474,12 @@ def render_ablation_headline():
         )
 
 
+CLOSENESS_ABLATION_LABELS = {
+    "no_objectives": "objectives/towers",
+    "no_structures": "towers/plates (structures / map control)",
+}
+
+
 def render_closeness_breakdown():
     st.subheader("Does objective control matter more in close games?")
     closeness = load_csv_if_exists(ABLATION_CLOSENESS_FILE)
@@ -475,15 +487,28 @@ def render_closeness_breakdown():
         st.info("Run `ablation.py` to generate `ablation_closeness_breakdown.csv`.")
         return
 
+    available = [v for v in CLOSENESS_ABLATION_LABELS if v in closeness["ablation"].unique()]
+    if not available:
+        st.info("No recognized ablation labels found in `ablation_closeness_breakdown.csv`.")
+        return
+
+    chosen = st.radio(
+        "Feature group removed",
+        available,
+        format_func=lambda v: CLOSENESS_ABLATION_LABELS[v],
+        horizontal=True,
+    )
+    subset = closeness[closeness["ablation"] == chosen]
+
     bucket_order = ["close", "medium", "blowout"]
     fig = go.Figure()
-    for model_name, group in closeness.groupby("model"):
+    for model_name, group in subset.groupby("model"):
         group = group.set_index("bucket").reindex(bucket_order)
         fig.add_trace(go.Bar(x=bucket_order, y=group["auc_gap"], name=model_name))
     fig.update_layout(
         barmode="group",
         xaxis_title="Game closeness (terciles of |gold diff|)",
-        yaxis_title="AUC gap from removing objectives/towers",
+        yaxis_title=f"AUC gap from removing {CLOSENESS_ABLATION_LABELS[chosen]}",
         height=380,
     )
     st.plotly_chart(fig, width="stretch")

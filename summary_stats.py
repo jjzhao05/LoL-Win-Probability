@@ -1,8 +1,9 @@
-import glob
 import json
 from pathlib import Path
 
 import pandas as pd
+
+from db import get_engine, MATCH_SNAPSHOTS_TABLE
 
 
 ROLES = ["top", "jg", "mid", "bot", "sup"]
@@ -66,23 +67,10 @@ def perk_name(perk_id):
 
 
 def load_dataset() -> pd.DataFrame:
-    input_file = DATA_DIR / "full_dataset.parquet"
+    engine = get_engine()
+    raw_df = pd.read_sql_table(MATCH_SNAPSHOTS_TABLE, engine)
 
-    if not input_file.exists():
-        raise FileNotFoundError(
-            f"Could not find dataset at {input_file}. "
-            "Make sure full_dataset.parquet is inside the data folder."
-        )
-
-    files = sorted(glob.glob(str(input_file)))
-
-    if not files:
-        files = [str(input_file)]
-
-    raw_df = pd.concat([pd.read_parquet(f) for f in files], ignore_index=True)
-
-    print(f"Loaded {len(files)} file(s)")
-    print(f"Loaded {len(raw_df)} rows total")
+    print(f"Loaded {len(raw_df)} rows from '{MATCH_SNAPSHOTS_TABLE}'")
     print()
 
     return raw_df
@@ -101,6 +89,35 @@ def win_rate_when(df, cond_100_has_it, cond_200_has_it):
         return None, 0
 
     return round((wins_100 + wins_200) / total, 4), int(total)
+
+
+ROLE_GOLD_DIFF_COLS = [f"{role}_gold_diff" for role in ROLES]
+
+
+def feature_correlations(raw_df):
+    gold_diff = raw_df[ROLE_GOLD_DIFF_COLS].sum(axis=1)
+    tower_diff = raw_df["towers_100"] - raw_df["towers_200"]
+    elder_diff = raw_df["elders_100"] - raw_df["elders_200"]
+
+    candidates = {
+        "kill_diff": raw_df["kill_diff"],
+        "dragon_diff": raw_df["dragon_diff"],
+        "herald_diff": raw_df["herald_diff"],
+        "baron_diff": raw_df["baron_diff"],
+        "elder_diff": elder_diff,
+        "plate_diff": raw_df["plate_diff"],
+        "tower_diff": tower_diff,
+    }
+
+    rows = []
+    for name, series in candidates.items():
+        rows.append({
+            "feature": name,
+            "pearson_corr_with_gold_diff": round(float(gold_diff.corr(series)), 4),
+            "n_rows": int(min(gold_diff.notna().sum(), series.notna().sum())),
+        })
+
+    return pd.DataFrame(rows).sort_values("pearson_corr_with_gold_diff", ascending=False, key=abs)
 
 
 def main():
@@ -190,6 +207,9 @@ def main():
         columns=["objective", "win_rate_for_team_that_secured_it", "games_with_clear_advantage"],
     )
     objective_impact.to_csv(OUTPUT_DIR / "objective_impact.csv", index=False)
+
+    corr_df = feature_correlations(raw_df)
+    corr_df.to_csv(OUTPUT_DIR / "feature_correlations.csv", index=False)
 
     raw_df = raw_df.copy()
     raw_df["dist_to_15min"] = (raw_df["timestamp_sec"] - SNOWBALL_TIME_SEC).abs()
@@ -410,6 +430,12 @@ def main():
 
     print()
     print("=" * 60)
+    print("CORRELATION OF EACH FEATURE GROUP WITH GOLD DIFFERENCE")
+    print("=" * 60)
+    print(corr_df.to_string(index=False))
+
+    print()
+    print("=" * 60)
     print("NOTABLE GAMES")
     print("=" * 60)
     print(notable.to_string(index=False))
@@ -462,8 +488,8 @@ def main():
     print()
     print(
         "Saved: summary_stats.csv, champion_stats.csv, ban_stats.csv, "
-        "role_stats.csv, objective_impact.csv, patch_stats.csv, notable_games.csv, "
-        "summoner_spell_stats.csv, rune_style_stats.csv, keystone_stats.csv"
+        "role_stats.csv, objective_impact.csv, feature_correlations.csv, patch_stats.csv, "
+        "notable_games.csv, summoner_spell_stats.csv, rune_style_stats.csv, keystone_stats.csv"
     )
 
 

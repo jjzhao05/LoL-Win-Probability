@@ -37,7 +37,7 @@ TEST_SIZE = 0.20
 MAX_ITER = 1000
 
 GRID = {
-    "C": [0.01, 0.1, 1.0, 10.0],
+    "C": [0.001, 0.01, 0.1, 1.0, 10.0, 100.0],
 }
 PENALTY = "l2"
 
@@ -80,6 +80,7 @@ def get_xy(df):
     drop_cols = [
         "match_id",
         "target",
+        "timestamp_sec",
     ]
 
     X = df.drop(columns=[c for c in drop_cols if c in df.columns])

@@ -38,11 +38,11 @@ MAX_ESTIMATORS = 600
 EARLY_STOPPING_ROUNDS = 30
 
 GRID = {
-    "max_depth": [3, 4, 6],
-    "learning_rate": [0.03, 0.05, 0.1],
-    "subsample": [0.7, 0.85, 1.0],
+    "max_depth": [3, 4, 6, 8],
+    "learning_rate": [0.01, 0.03, 0.05, 0.1],
+    "subsample": [0.6, 0.7, 0.85, 1.0],
+    "colsample_bytree": [0.7, 0.85, 1.0],
 }
-COLSAMPLE_BYTREE = 0.85
 
 
 def load_or_create_split(match_ids):
@@ -83,6 +83,7 @@ def get_xy(df):
     drop_cols = [
         "match_id",
         "target",
+        "timestamp_sec",
     ]
 
     X = df.drop(columns=[c for c in drop_cols if c in df.columns])
@@ -107,7 +108,7 @@ def train_one_config(config, X_fit, y_fit, X_val, y_val, monotone_constraints):
         max_depth=config["max_depth"],
         learning_rate=config["learning_rate"],
         subsample=config["subsample"],
-        colsample_bytree=COLSAMPLE_BYTREE,
+        colsample_bytree=config["colsample_bytree"],
         monotone_constraints=monotone_constraints,
         early_stopping_rounds=EARLY_STOPPING_ROUNDS,
         random_state=RANDOM_STATE,
@@ -264,7 +265,6 @@ def main():
 
         row = {
             **config,
-            "colsample_bytree": COLSAMPLE_BYTREE,
             "best_iteration": result["best_iteration"],
             "val_auc": result["val_auc"],
             "val_log_loss": result["val_log_loss"],

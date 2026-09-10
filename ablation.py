@@ -24,6 +24,8 @@ from common import (
 
 ECONOMY_KEYWORDS = ["gold", "xp", "level"]
 OBJECTIVE_KEYWORDS = ["dragon", "herald", "baron", "elder", "plate", "tower", "destroyed"]
+STRUCTURE_KEYWORDS = ["tower", "destroyed", "plate"]
+EPIC_MONSTER_KEYWORDS = ["dragon", "herald", "baron", "elder"]
 
 XGB_INPUT_FILE = Path("xgb_engineered/xgb_clean_dataset.parquet")
 
@@ -56,11 +58,32 @@ def is_objective_col(name):
     return any(kw in lname for kw in OBJECTIVE_KEYWORDS)
 
 
+def is_structure_col(name):
+    lname = name.lower()
+    return any(kw in lname for kw in STRUCTURE_KEYWORDS)
+
+
+def is_epic_monster_col(name):
+    lname = name.lower()
+    return any(kw in lname for kw in EPIC_MONSTER_KEYWORDS)
+
+
 VARIANTS = {
     "full": lambda name: False,
     "no_economy": is_economy_col,
     "no_objectives": is_objective_col,
+    "no_structures": is_structure_col,
+    "no_epic_monsters": is_epic_monster_col,
 }
+
+ABLATION_DROP_LABELS = {
+    "no_economy": "gold/XP/level",
+    "no_objectives": "objectives/towers",
+    "no_structures": "towers/plates",
+    "no_epic_monsters": "dragons/heralds/barons/elders",
+}
+
+CLOSENESS_VARIANTS = ("no_objectives", "no_structures")
 
 
 def load_split(match_ids):
@@ -223,7 +246,7 @@ def bootstrap_auc_gap(merged, prob_col_full, prob_col_ablated, target_col="targe
     }
 
 
-def closeness_breakdown(merged, prob_col_full, prob_col_ablated, target_col="target",
+def closeness_breakdown(merged, prob_col_full, prob_col_ablated, ablation_label, target_col="target",
                          closeness_col="abs_gold_diff", labels=CLOSENESS_BUCKET_LABELS):
     merged = merged.dropna(subset=[closeness_col]).copy()
     if merged.empty:
@@ -243,11 +266,12 @@ def closeness_breakdown(merged, prob_col_full, prob_col_ablated, target_col="tar
         auc_ablated = roc_auc_score(y, g[prob_col_ablated].to_numpy())
 
         rows.append({
+            "ablation": ablation_label,
             "bucket": label,
             "rows": len(g),
             "median_abs_gold_diff": round(float(g[closeness_col].median()), 1),
             "auc_full": round(float(auc_full), 4),
-            "auc_no_objectives": round(float(auc_ablated), 4),
+            "auc_ablated": round(float(auc_ablated), 4),
             "auc_gap": round(float(auc_full - auc_ablated), 4),
             "auc_retained_pct": round(float(auc_ablated / auc_full), 4) if auc_full else float("nan"),
         })
@@ -296,7 +320,7 @@ def print_summary(results):
         print(f"  Baseline accuracy (majority class): {full['baseline_accuracy']:.4f}")
         print(f"  Full features     ({full['n_features']:>3} feats): AUC={full['auc']:.4f}  log_loss={full['log_loss']:.4f}  accuracy={full['accuracy']:.4f}  brier={full['brier']:.4f}")
 
-        for variant_key, drop_label in [("no_economy", "gold/XP/level"), ("no_objectives", "objectives/towers")]:
+        for variant_key, drop_label in ABLATION_DROP_LABELS.items():
             ablated = variants.get(variant_key)
             if not ablated:
                 continue
@@ -305,12 +329,12 @@ def print_summary(results):
             print(f"    AUC retained without {drop_label}: {ablated['auc'] / full['auc']:.1%}  (gap: {full['auc'] - ablated['auc']:.4f})")
 
 
-def print_closeness_rows(model_name, rows):
-    print(f"\n{model_name} -- no_objectives AUC gap by game closeness (|{CLOSENESS_FEATURE}|):")
+def print_closeness_rows(model_name, variant_label, rows):
+    print(f"\n{model_name} -- {variant_label} AUC gap by game closeness (|{CLOSENESS_FEATURE}|):")
     for row in rows:
         print(
             f"  {row['bucket']:<8} | rows: {row['rows']:>6} | median |gold diff|: {row['median_abs_gold_diff']:>8} "
-            f"| auc_full: {row['auc_full']:.4f} | auc_no_objectives: {row['auc_no_objectives']:.4f} "
+            f"| auc_full: {row['auc_full']:.4f} | auc_ablated: {row['auc_ablated']:.4f} "
             f"| gap: {row['auc_gap']:.4f} | retained: {row['auc_retained_pct']:.1%}"
         )
 
@@ -339,7 +363,7 @@ def main():
     for model_name in MODEL_FITTERS:
         full_pred = predictions[(model_name, "full")]
 
-        for variant_label, drop_label in [("no_economy", "gold/XP/level"), ("no_objectives", "objectives/towers")]:
+        for variant_label, drop_label in ABLATION_DROP_LABELS.items():
             ablated_pred = predictions[(model_name, variant_label)]
 
             merged = full_pred.merge(
@@ -355,9 +379,9 @@ def main():
             )
             bootstrap_rows.append({"model": model_name, "ablation": variant_label, **ci})
 
-            if variant_label == "no_objectives":
-                rows = closeness_breakdown(merged, "prob_full", "prob_ablated")
-                print_closeness_rows(model_name, rows)
+            if variant_label in CLOSENESS_VARIANTS:
+                rows = closeness_breakdown(merged, "prob_full", "prob_ablated", variant_label)
+                print_closeness_rows(model_name, variant_label, rows)
                 closeness_rows.extend({"model": model_name, **row} for row in rows)
 
     save_dict_rows_csv(bootstrap_rows, BOOTSTRAP_RESULTS_FILE)
