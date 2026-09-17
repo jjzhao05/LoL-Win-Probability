@@ -468,7 +468,7 @@ ABLATION_VARIANT_LABELS = {
 
 
 def render_ablation_headline():
-    st.subheader("Does the win-probability signal come from gold, or objectives?")
+    st.subheader("Does the win probability signal come from gold, or objectives?")
     results = load_csv_if_exists(ABLATION_RESULTS_FILE)
     bootstrap = load_csv_if_exists(ABLATION_BOOTSTRAP_FILE)
 
@@ -779,7 +779,7 @@ def render_findings():
 
 def main():
     st.set_page_config(page_title="LoL Win Probability Model", layout="wide")
-    st.title("League of Legends Win-Probability Model")
+    st.title("League of Legends Win Probability Model")
 
     page = st.sidebar.radio("Page", ["Explore a Game", "Findings"])
 
