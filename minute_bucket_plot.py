@@ -15,9 +15,6 @@ OUTPUT_PLOT = Path("figures/auc_by_minute.png")
 
 LOG_DIR = Path("logs")
 
-# Same model colors used throughout the project's other figures (XGBoost
-# blue, logistic regression orange -- see probability_plot.py, app.py,
-# ablation_plotter.py).
 MODEL_COLORS = {"XGBoost": "#1f77b4", "LogisticRegression": "#ff7f0e"}
 
 BUCKET_LABELS = [f"{start}-{end}" for start, end in MINUTE_BUCKETS]

@@ -31,10 +31,7 @@ EPIC_MONSTER_KEYWORDS = ["dragon", "herald", "baron", "elder"]
 
 XGB_INPUT_FILE = Path("xgb_engineered/xgb_clean_dataset.parquet")
 
-# Written by export_match_ranks.py. Reading it from disk here (rather than
-# querying Postgres directly) keeps this script working against just the
-# already-materialized parquet/split/CSV files, same as XGB_INPUT_FILE and
-# SPLIT_FILE below.
+# Written by export_match_ranks.py.
 MATCH_RANKS_FILE = Path("results/match_ranks.csv")
 
 RESULTS_FILE = Path("results/ablation_results.csv")
@@ -95,11 +92,6 @@ def is_epic_monster_col(name):
 
 
 def _keep_only(predicate):
-    """Invert a 'drop these' predicate into a 'drop everything except
-    these (+ minute)' predicate, for the only_X variants below. `minute`
-    is kept in every only_X variant (as it already is in every no_X
-    variant, since it matches none of the keyword lists) so all variants
-    share the same minimal timing context and stay comparable."""
     return lambda name: not (predicate(name) or name == "minute")
 
 
@@ -122,10 +114,6 @@ ABLATION_DROP_LABELS = {
     "no_epic_monsters": "dragons/heralds/barons/elders",
 }
 
-# "only_X" variants keep just that feature group (+ minute) and drop
-# everything else -- the inverse of ABLATION_DROP_LABELS. Where "no_X"
-# answers "how much do we lose by removing this group", "only_X" answers
-# "how much of the full model's AUC can this group alone recover".
 ONLY_KEEP_LABELS = {
     "only_economy": "gold/XP/level",
     "only_objectives": "objectives/towers",
@@ -138,10 +126,6 @@ CLOSENESS_VARIANTS = (
     "only_objectives", "only_economy",
 )
 
-# n_boot for the per-bucket/per-rank bootstrap CIs below. Lower than
-# N_BOOTSTRAP since each slice already has far fewer matches than the full
-# test set, so the resampling distribution stabilizes with fewer draws --
-# keeps the extra CI computation from meaningfully slowing this script down.
 N_BOOTSTRAP_SLICE = 1000
 
 

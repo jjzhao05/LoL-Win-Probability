@@ -42,9 +42,7 @@ LOG_DIR = Path("logs")
 MAX_ESTIMATORS = 600
 EARLY_STOPPING_ROUNDS = 30
 
-# Tree-structure/sampling params only. A regularization sweep
-# (min_child_weight, gamma, reg_alpha, reg_lambda) was tried and removed
-# again -- it isn't part of this grid.
+# Tree-structure/sampling params only.
 GRID = {
     "max_depth": [3, 4, 6, 8],
     "learning_rate": [0.01, 0.03, 0.05, 0.1],
@@ -128,12 +126,8 @@ def save_feature_importances(model, feature_names, csv_path, plot_path, top_n=TO
 
 
 def main():
-    # Belt-and-suspenders seeding: train_test_split and XGBClassifier below
-    # already take random_state=RANDOM_STATE directly, which is what
-    # actually controls the split and the model fit. Seeding the global
-    # random/numpy state too means nothing in this run depends on
-    # unseeded global state, even indirectly (e.g. via a library call that
-    # doesn't expose its own random_state argument).
+    # Belt-and-suspenders: seed global random/numpy state too, not just
+    # the random_state args passed below.
     random.seed(RANDOM_STATE)
     np.random.seed(RANDOM_STATE)
 

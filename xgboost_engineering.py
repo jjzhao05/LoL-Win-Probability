@@ -20,20 +20,13 @@ OUTPUT_FILE = Path("xgb_engineered/xgb_clean_dataset.parquet")
 
 LOG_DIR = Path("logs")
 
-# Stats that keep a team-level diff alongside their per-role diffs, even
-# though the team-level column is exactly the sum of the five role columns.
-# Limited to the stats app.py's custom-scenario sliders write to directly
-# (total_gold, xp, minions_killed, kills, assists, deaths). Every other
-# basic stat only exists at the per-role level, since nothing needs the
-# aggregate and keeping both is pure duplication.
+# Stats app.py's custom-scenario sliders write to directly; these keep a
+# team-level diff column in addition to their per-role diffs.
 TEAM_LEVEL_STATS = {"total_gold", "xp", "minions_killed", "kills", "assists", "deaths"}
 
 
 def _tower_diff_groups():
-    """Map each output tower-diff column to the raw TOWER_PARTS columns it
-    sums. The two nexus towers are grouped into a single nexus_towers_diff
-    instead of two separate columns -- they are not meaningfully different
-    signals, both just say "the nexus is under attack"."""
+    """Map each output tower-diff column to the raw TOWER_PARTS columns it sums."""
     groups = {}
     for part in TOWER_PARTS:
         name = "nexus_towers" if part.startswith("nexus_tower") else part
@@ -67,19 +60,8 @@ def team_total(existing, team, stat):
 
 
 def add_features(lf):
-    """Per-role diffs for every basic stat (PER_ROLE_BREAKOUT, all five
-    roles), plus:
-
-    - a team-level diff too, but only for TEAM_LEVEL_STATS -- keeping the
-      team-level column for every stat would just duplicate the sum of its
-      five role columns, so it is limited to the handful of stats that
-      something downstream actually reads at the team level.
-    - one combined team-level diff, summed across COMBAT_DAMAGE_STATS
-      (magic + physical + true damage to champions), rather than a
-      column per damage type -- the total-damage-to-champions signal is
-      what isn't a restatement of gold/CS; splitting it by type mostly
-      just encodes team composition (AP vs. AD), not who's winning.
-    """
+    """Per-role diffs for every basic stat, plus team-level diffs for
+    TEAM_LEVEL_STATS and a combined damage-to-champions diff."""
     existing = cols(lf)
 
     exprs = [
@@ -125,10 +107,7 @@ def add_features(lf):
 
 
 def add_tower_features(lf):
-    """One diff column per tower group (top/mid/bot outer/inner/base, and
-    one combined nexus_towers_diff), plus an aggregate tower_diff -- so the
-    model can tell "lost the bot outer tower early" apart from "lost mid
-    base" instead of only seeing a total tower count."""
+    """One diff column per tower group, plus an aggregate tower_diff."""
     existing = cols(lf)
 
     part_exprs = []
@@ -161,8 +140,7 @@ def add_tower_features(lf):
 
 
 def add_inhib_features(lf):
-    """One diff column per lane inhibitor, plus an aggregate inhib_diff --
-    same shape as add_tower_features."""
+    """One diff column per lane inhibitor, plus an aggregate inhib_diff."""
     existing = cols(lf)
 
     lane_exprs = []
@@ -185,9 +163,7 @@ def add_inhib_features(lf):
 
 
 def add_event_features(lf):
-    """first_blood_diff / first_tower_diff only -- the per-team 'so far'
-    flags they're built from aren't kept, since the diff already encodes
-    both which team it was and that it happened."""
+    """first_blood_diff / first_tower_diff only."""
     existing = cols(lf)
 
     exprs = []
@@ -211,14 +187,8 @@ def add_event_features(lf):
 
 
 def add_momentum_features(lf):
-    """3-minute momentum only. A 1-minute delta is mostly noise at this
-    snapshot resolution and tracks its 3-minute sibling closely, so keeping
-    both just doubles the feature count for little extra signal.
-
-    Excluded here: first_blood_diff and first_tower_diff, step functions
-    that flip once per match, so their 3-minute delta is almost always 0;
-    and the individual tower/inhib diffs, whose aggregate (tower_diff,
-    inhib_diff) already gets a delta_3min covering the same ground."""
+    """3-minute momentum deltas, excluding event flags and per-part
+    tower/inhib diffs (their aggregates already get a delta_3min)."""
     no_momentum = {"first_blood_diff", "first_tower_diff"}
     no_momentum |= {f"{name}_diff" for name in TOWER_DIFF_GROUPS}
     no_momentum |= {f"{lane}_inhib_diff" for lane in INHIB_LANES}

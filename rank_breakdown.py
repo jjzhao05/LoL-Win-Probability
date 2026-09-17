@@ -17,10 +17,6 @@ OUTPUT_PLOT = Path("figures/rank_breakdown.png")
 
 LOG_DIR = Path("logs")
 
-# Riot's ranked tiers, low to high, matching collect_data.py's ten skill
-# brackets (IRON through CHALLENGER). Used only to order rows/bars -- any
-# rank value present in the data that isn't in this list still gets
-# included, just sorted after the ones that are.
 RANK_ORDER = [
     "IRON",
     "BRONZE",
@@ -57,10 +53,7 @@ def load_predictions(path, rename_to=None):
 
 
 def load_match_ranks():
-    """One row per match_id with its rank tier, read from the CSV
-    export_match_ranks.py writes -- so this script only ever touches
-    already-materialized files, the same as the training/ablation
-    scripts, instead of hitting Postgres on every run."""
+    """One row per match_id with its rank tier, from export_match_ranks.py's CSV."""
     if not MATCH_RANKS_FILE.exists():
         raise FileNotFoundError(
             f"Missing {MATCH_RANKS_FILE}. Run export_match_ranks.py first "

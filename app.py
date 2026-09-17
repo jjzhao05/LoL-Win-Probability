@@ -15,7 +15,6 @@ from common import (
     TOWER_PARTS,
     evaluate_by_minute_bucket,
 )
-from db import get_engine, MATCH_SNAPSHOTS_TABLE
 
 
 def show_chart(fig, **kwargs):
@@ -43,6 +42,8 @@ ABLATION_RESULTS_FILE = Path("results/ablation_results.csv")
 ABLATION_BOOTSTRAP_FILE = Path("results/ablation_bootstrap_cis.csv")
 ABLATION_CLOSENESS_FILE = Path("results/ablation_closeness_breakdown.csv")
 ABLATION_RANK_FILE = Path("results/ablation_rank_breakdown.csv")
+
+EVENTS_CACHE_FILE = Path("results/match_events_cache.parquet")
 
 OBJECTIVES = ["dragons", "heralds", "barons", "elders"]
 
@@ -83,10 +84,9 @@ def load_logreg_predictions():
 
 @st.cache_data
 def load_full_data():
-    try:
-        df = pd.read_sql_table(MATCH_SNAPSHOTS_TABLE, get_engine())
-    except Exception:
+    if not EVENTS_CACHE_FILE.exists():
         return None
+    df = pd.read_parquet(EVENTS_CACHE_FILE)
     df["match_id"] = df["match_id"].astype(str)
     df["minute"] = (df["timestamp_sec"] / 60).round().astype(int)
     return df.sort_values(["match_id", "timestamp_sec"])
@@ -250,7 +250,7 @@ def render_real_match_tab():
                 font=dict(size=9, color=color), yshift=6 if ev["team"] == 100 else -6,
             )
     elif full_df is None:
-        st.info(f"Couldn't load `{MATCH_SNAPSHOTS_TABLE}` from the database. No event annotations shown.")
+        st.info(f"Couldn't find `{EVENTS_CACHE_FILE}`. Run `export_app_cache.py` to generate it. No event annotations shown.")
 
     fig.update_layout(
         yaxis=dict(

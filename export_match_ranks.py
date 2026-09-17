@@ -6,11 +6,7 @@ from db import get_engine, MATCH_SNAPSHOTS_TABLE
 from logging_utils import run_with_file_logging
 
 
-# One-off/manual export, the same way collect_data.py is. Everything else
-# that wants a match's rank (rank_breakdown.py, ablation.py's rank
-# breakdown) reads this CSV instead of hitting Postgres itself, so those
-# scripts keep working against just the already-materialized parquet/split
-# files on disk. Re-run this after collect_data.py pulls new matches.
+# Re-run after collect_data.py pulls new matches.
 OUTPUT_FILE = Path("results/match_ranks.csv")
 
 LOG_DIR = Path("logs")

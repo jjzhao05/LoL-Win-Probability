@@ -45,9 +45,6 @@ RANK_ORDER = [
 SIGNIFICANT_ALPHA = 1.0
 NOT_SIGNIFICANT_ALPHA = 0.35
 
-# The variants the headline "economy vs objectives" plot shows. The rest
-# (no_structures, no_epic_monsters, etc.) are in the CSV but left off this
-# chart to keep it readable.
 AUC_PLOT_VARIANTS = ["full", "no_economy", "no_objectives", "only_economy", "only_objectives"]
 AUC_PLOT_LABELS = {
     "full": "Full features",

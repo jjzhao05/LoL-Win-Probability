@@ -104,11 +104,6 @@ def win_rate_when(df, cond_100_has_it, cond_200_has_it):
     return round((wins_100 + wins_200) / total, 4), int(total)
 
 
-# The raw match_snapshots table has no pre-computed diff columns (those are
-# built later, in xgboost_engineering.py) and no aggregate tower/kill
-# columns either -- it only has per-role, per-team totals and per-tower-part
-# destroyed flags. So every diff used here is derived straight from the
-# columns collect_data.py actually writes.
 LANE_TOWER_PARTS = [f"{lane}_{tier}" for lane in ("top", "mid", "bot") for tier in ("outer", "inner", "base")]
 NEXUS_TOWER_PARTS = ["nexus_tower_1", "nexus_tower_2"]
 ALL_TOWER_PARTS = LANE_TOWER_PARTS + NEXUS_TOWER_PARTS

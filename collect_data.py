@@ -250,9 +250,7 @@ def get_timeline(match_id):
 
 
 def collect_match_ids(bracket_name, puuid_batch, processed_ids, global_seen):
-    """Pull recent ranked match ids for every puuid in the batch. The
-    caller (process_bracket) decides when enough matches have been
-    collected and whether to pull another batch."""
+    """Pull recent ranked match ids for every puuid in the batch."""
     match_ids = []
     seen = set(processed_ids) | set(global_seen)
     for puuid in puuid_batch:
@@ -528,11 +526,8 @@ def _tower_tier(tower_type):
 
 
 def _build_inhib_destroy_log(frames):
-    """Like _build_tower_destroy_log, but for inhibitors. Inhibitors can
-    respawn and be destroyed again, but the state features below only track
-    whether a lane's inhibitor has EVER been destroyed by a given snapshot,
-    the same simplification already used for towers -- it keeps the feature
-    a plain 0/1 rather than needing to model respawn timers."""
+    """Like _build_tower_destroy_log, but for inhibitors (tracked as a
+    plain 0/1 ever-destroyed flag, ignoring respawns)."""
     inhib_events = []
     for frame in frames:
         for ev in frame.get("events", []):
@@ -937,10 +932,8 @@ def extract_snapshots(match, timeline):
 
 
 # The columns of the final dataset. Not everything extract_snapshots
-# computes is kept: identifiers/strings that don't help a model, values
-# already implied by other kept columns (all_runes, cs, hp_pct/power_pct,
-# total_damage_done(_to_champions)), and kda/kill_participation, which are
-# derived stats better computed from kills/deaths/assists downstream.
+# computes is kept -- identifiers, redundant, and derived-elsewhere fields
+# are dropped.
 
 GLOBAL_FIELDS = (
     "match_id", "timestamp_sec", "game_duration_sec", "team_100_win", "patch",

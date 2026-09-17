@@ -11,9 +11,6 @@ from sklearn.model_selection import train_test_split
 ROLES = ["top", "jg", "mid", "bot", "sup"]
 TEAMS = [100, 200]
 
-# Single source of truth for model colors so every figure in the project
-# (ablation_plotter.py, rank_breakdown.py, probability_plot.py, app.py)
-# draws XGBoost and logistic regression in the same two colors.
 MODEL_COLORS = {"XGBoost": "#1f77b4", "LogisticRegression": "#ff7f0e"}
 
 BASIC_STATS = [
@@ -30,19 +27,12 @@ BASIC_STATS = [
     "wards_killed",
 ]
 
-# Damage *to champions* is the one damage signal that isn't just a
-# restatement of gold/CS. Damage to non-champion targets (mostly farm) and
-# damage taken (mostly itemization) are left out as redundant.
 COMBAT_DAMAGE_STATS = [
     "magic_damage_done_to_champions",
     "physical_damage_done_to_champions",
     "true_damage_done_to_champions",
 ]
 
-# Roles whose per-role diffs are restored alongside the team-level ones.
-# Note this reintroduces an exact linear dependency: each team_{stat}_diff
-# equals the sum of the five {role}_{stat}_diff columns below it, since
-# that's how the team total is built in the first place.
 PER_ROLE_BREAKOUT = ROLES
 
 OBJECTIVES = ["plates", "dragons", "heralds", "barons", "elders"]
@@ -61,9 +51,6 @@ TOWER_PARTS = [
     "nexus_tower_2",
 ]
 
-# Each team has one inhibitor per lane. Unlike towers these can respawn,
-# but the collected data only tracks whether a lane's inhibitor has ever
-# been destroyed by a given snapshot -- see collect_data.py.
 INHIB_LANES = ["top", "mid", "bot"]
 
 MINUTE_BUCKETS = [
@@ -87,9 +74,7 @@ REQUIRED_ENGINEERED_COLUMNS = {"match_id", "target", "minute"}
 
 
 def load_engineered_dataset(path):
-    """Read the engineered-features parquet and sanity-check it has the
-    columns every training script depends on. Shared by xgboost_train.py
-    and logistic_regression_train.py, which both read the same file."""
+    """Read the engineered-features parquet and check required columns."""
     print("Reading:", path)
 
     df = pd.read_parquet(path)
@@ -104,8 +89,7 @@ def load_engineered_dataset(path):
 
 
 def load_or_create_split(match_ids, test_size=TEST_SIZE):
-    """Match-id-level train/test split, cached to SPLIT_FILE so xgboost and
-    logistic regression are compared on the exact same held-out matches."""
+    """Match-id-level train/test split, cached to SPLIT_FILE."""
     match_ids = np.array(sorted(pd.Series(match_ids).astype(str).unique()))
 
     if SPLIT_FILE.exists():
@@ -142,8 +126,7 @@ def get_xy(df, drop_cols=("match_id", "target", "timestamp_sec")):
 
 
 def save_results_csv(results, path):
-    """Write a grid-search results table, re-called after every config so
-    progress survives an interrupted run."""
+    """Write a grid-search results table."""
     if not results:
         return
 
@@ -253,14 +236,8 @@ def save_calibration_plot(y_true, probs, out_path, title, n_bins=10):
 
 
 def infer_monotone_constraints(feature_names):
-    """Direction each feature should push team 100's win probability.
-
-    Every feature here is a team-100-minus-team-200 diff, so "more of it
-    for team 100" should raise their win chance for almost every stat
-    (gold, kills, towers, dragons, ...). Deaths are the one basic stat
-    where that's backwards: more relative deaths for team 100 should
-    lower their win chance, so those columns get -1 instead of +1.
-    """
+    """Direction each feature should push team 100's win probability
+    (-1 for deaths columns, +1 for everything else)."""
     constraints = []
     for col in feature_names:
         if "deaths" in col:

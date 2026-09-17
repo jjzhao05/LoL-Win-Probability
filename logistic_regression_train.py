@@ -45,12 +45,7 @@ MAX_ITER = 1000
 GRID = {
     "C": [0.001, 0.01, 0.1, 1.0, 10.0, 100.0],
 }
-# sklearn >=1.8 deprecates the `penalty` argument in favor of `l1_ratio`
-# (l1_ratio=0 == old penalty="l2", l1_ratio=1 == old penalty="l1"; see the
-# FutureWarning sklearn raises otherwise). L1_RATIO=0 keeps this project's
-# usual L2/ridge behavior, just spelled the way that stays valid once
-# `penalty` is actually removed in 1.10. PENALTY_LABEL is kept purely for
-# the grid-search CSV/log output, which has always recorded "penalty".
+# l1_ratio=0 is the sklearn >=1.8 spelling of the old penalty="l2" default.
 L1_RATIO = 0
 PENALTY_LABEL = "l2"
 

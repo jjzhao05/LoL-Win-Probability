@@ -8,11 +8,7 @@ import csv
 from datetime import datetime
 
 
-# Each entry is one pipeline step. `inputs` are files that, if newer than
-# the step's outputs, mean the step is stale and must rerun (the step's own
-# source file is always included). `outputs` are what the step produces; a
-# step is skipped only when every output exists (non-empty, for a
-# directory) and no input is newer than the oldest output.
+# A step reruns only if an input is newer than its oldest output.
 PIPELINE = [
     {
         "script": "summary_stats.py",
@@ -76,6 +72,17 @@ PIPELINE = [
         ],
         "outputs": ["figures/xgb_vs_logreg_labeled_plots"],
     },
+    {
+        "script": "export_app_cache.py",
+        "inputs": [
+            "export_app_cache.py",
+            "common.py",
+            "db.py",
+            "results/xgb_predictions.parquet",
+            "results/logreg_predictions.parquet",
+        ],
+        "outputs": ["results/match_events_cache.parquet"],
+    },
 ]
 
 LOG_FILE = Path("results/run_times.csv")
@@ -85,9 +92,7 @@ RUN_LOG_FILE = LOG_DIR / f"main_run_{datetime.now():%Y%m%d_%H%M%S}.log"
 
 
 def oldest_output_mtime(output):
-    """None if the output is missing (or an empty directory); otherwise the
-    mtime of the output itself, or the mtime of its oldest file if it's a
-    directory of files (e.g. probability_plot.py's plot folder)."""
+    """mtime of output, or its oldest file if it's a directory; None if missing."""
     path = Path(output)
 
     if path.is_dir():

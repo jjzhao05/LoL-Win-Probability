@@ -13,3 +13,9 @@ logs/
 *.pth
 
 !lol_data/*.json
+
+# Small artifacts the deployed Streamlit app reads directly, so the app
+# works without a live database or local training run.
+!models/*.json
+!results/*.csv
+!results/*.parquet
