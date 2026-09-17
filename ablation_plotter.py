@@ -29,7 +29,6 @@ FIGURES_DIR = Path("figures")
 AUC_BY_VARIANT_PLOT = FIGURES_DIR / "ablation_auc_by_variant.png"
 CLOSENESS_PLOT = FIGURES_DIR / "ablation_closeness_breakdown.png"
 RANK_PLOT = FIGURES_DIR / "ablation_rank_breakdown.png"
-COLLINEARITY_PLOT = FIGURES_DIR / "ablation_collinearity.png"
 MINUTE_BUCKET_PLOT = FIGURES_DIR / "auc_by_minute.png"
 
 LOG_DIR = Path("logs")
@@ -49,8 +48,6 @@ RANK_ORDER = [
     "EMERALD", "DIAMOND", "MASTER", "GRANDMASTER", "CHALLENGER",
 ]
 
-COLLINEARITY_VARIANTS = ("team_level_only", "role_level_only")
-
 # A gap whose 95% CI is drawn faded/hollow rather than solid -- it means
 # the CI on that gap includes zero, i.e. it isn't distinguishable from no
 # difference at all at this sample size. This project's ablation gaps are
@@ -66,8 +63,7 @@ NOT_SIGNIFICANT_ALPHA = 0.35
 # the four no_X/only_X variants the report text discusses. The other
 # variants (no_structures, no_epic_monsters, only_structures,
 # only_epic_monsters) are in ablation_results.csv but left off this
-# particular chart to keep it readable; team/role-level collinearity gets
-# its own plot below.
+# particular chart to keep it readable.
 AUC_PLOT_VARIANTS = ["full", "no_economy", "no_objectives", "only_economy", "only_objectives"]
 AUC_PLOT_LABELS = {
     "full": "Full features",
@@ -263,47 +259,6 @@ def save_rank_plot(rank_df, out_path=RANK_PLOT):
     plt.close(fig)
 
 
-def save_collinearity_plot(bootstrap_df, out_path=COLLINEARITY_PLOT):
-    """Bar chart of the team_level_only / role_level_only AUC gap, grouped
-    by model, with 95% bootstrap CI error bars. Faded where that CI
-    includes zero."""
-    df = bootstrap_df[bootstrap_df["ablation"].isin(COLLINEARITY_VARIANTS)]
-    if df.empty:
-        return
-
-    models = df["model"].unique()
-    x = np.arange(len(COLLINEARITY_VARIANTS))
-    width = 0.8 / max(len(models), 1)
-
-    fig, ax = plt.subplots(figsize=(9, 6))
-
-    for i, model_name in enumerate(models):
-        group = df[df["model"] == model_name].set_index("ablation").reindex(COLLINEARITY_VARIANTS)
-        offsets = x + (i - (len(models) - 1) / 2) * width
-
-        yerr_low = (group["mean_gap"] - group["ci_low"]).clip(lower=0)
-        yerr_high = (group["ci_high"] - group["mean_gap"]).clip(lower=0)
-        not_sig = (group["ci_low"] <= 0) & (0 <= group["ci_high"])
-
-        bars = ax.bar(offsets, group["mean_gap"], width, label=model_name, color=MODEL_COLORS.get(model_name))
-        for bar, is_not_sig in zip(bars, not_sig):
-            bar.set_alpha(NOT_SIGNIFICANT_ALPHA if is_not_sig else SIGNIFICANT_ALPHA)
-        ax.errorbar(offsets, group["mean_gap"], yerr=[yerr_low, yerr_high], fmt="none", ecolor="black", elinewidth=1, capsize=3)
-
-    ax.set_xticks(x)
-    ax.set_xticklabels(["Team-level features only", "Role-level features only"])
-    ax.set_ylabel("AUC gap from full features")
-    ax.axhline(0, color="black", linewidth=0.8)
-    ax.set_title("Cost of the team-level vs. role-level redundancy")
-    ax.grid(True, axis="y", alpha=0.25)
-    ax.legend()
-
-    fig.tight_layout()
-    out_path.parent.mkdir(parents=True, exist_ok=True)
-    fig.savefig(out_path, dpi=150)
-    plt.close(fig)
-
-
 def load_predictions(path):
     if not path.exists():
         raise FileNotFoundError(
@@ -359,7 +314,7 @@ def save_minute_bucket_plot(combined_df, out_path=MINUTE_BUCKET_PLOT):
 
 def main():
     results_df = load_csv(RESULTS_FILE, "the AUC-by-variant plot")
-    bootstrap_df = load_csv(BOOTSTRAP_RESULTS_FILE, "the AUC-by-variant and collinearity plots")
+    bootstrap_df = load_csv(BOOTSTRAP_RESULTS_FILE, "the AUC-by-variant plot")
     closeness_df = load_csv(CLOSENESS_RESULTS_FILE, "the closeness plot")
     rank_df = load_csv(RANK_RESULTS_FILE, "the rank plot")
 
@@ -378,9 +333,6 @@ def main():
 
     save_rank_plot(rank_df)
     print("Saved:", RANK_PLOT)
-
-    save_collinearity_plot(bootstrap_df)
-    print("Saved:", COLLINEARITY_PLOT)
 
     xgb_pred = load_predictions(XGB_PREDICTIONS_FILE)
     logreg_pred = load_predictions(LOGREG_PREDICTIONS_FILE)

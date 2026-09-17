@@ -1,0 +1,7 @@
+Logging full run output to: logs\ablation_plotter_run_20260916_202445.log
+Saved: figures\ablation_auc_by_variant.png
+Saved: figures\ablation_closeness_breakdown.png
+Saved: figures\ablation_rank_breakdown.png
+Saved: figures\ablation_collinearity.png
+Saved: results\minute_bucket_breakdown.csv
+Saved: figures\auc_by_minute.png

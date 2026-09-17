@@ -14,9 +14,7 @@ from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
 
 from common import (
-    BASIC_STATS,
     RANDOM_STATE,
-    ROLES,
     SPLIT_FILE,
     VAL_SIZE,
     compute_metrics,
@@ -31,18 +29,6 @@ ECONOMY_KEYWORDS = ["gold", "xp", "level"]
 OBJECTIVE_KEYWORDS = ["dragon", "herald", "baron", "elder", "plate", "tower", "destroyed"]
 STRUCTURE_KEYWORDS = ["tower", "destroyed", "plate"]
 EPIC_MONSTER_KEYWORDS = ["dragon", "herald", "baron", "elder"]
-
-# Mirrors xgboost_engineering.TEAM_LEVEL_STATS -- the six basic stats that
-# get both a team-level diff and five per-role diffs, so team_{stat}_diff
-# is an exact sum of the five role_{stat}_diff columns (see common.py's
-# note on PER_ROLE_BREAKOUT about that exact linear dependency). Duplicated
-# here instead of imported so this script stays independent of
-# xgboost_engineering's db.py/Postgres import chain -- it only ever touches
-# the already-materialized parquet + split files.
-TEAM_LEVEL_STATS = {"total_gold", "xp", "minions_killed", "kills", "assists", "deaths"}
-
-ROLE_LEVEL_STAT_COLS = {f"{role}_{stat}_diff" for role in ROLES for stat in BASIC_STATS}
-TEAM_LEVEL_STAT_COLS = {f"team_{stat}_diff" for stat in TEAM_LEVEL_STATS}
 
 XGB_INPUT_FILE = Path("xgb_engineered/xgb_clean_dataset.parquet")
 
@@ -119,26 +105,6 @@ def is_epic_monster_col(name):
     return any(kw in lname for kw in EPIC_MONSTER_KEYWORDS)
 
 
-def _strip_delta_suffix(name):
-    suffix = "_delta_3min"
-    return name[: -len(suffix)] if name.endswith(suffix) else name
-
-
-def is_role_level_stat_col(name):
-    """True for a per-role basic-stat diff column (e.g. top_total_gold_diff)
-    or its 3-minute delta -- the columns duplicated by TEAM_LEVEL_STAT_COLS,
-    per the exact team_{stat}_diff = sum(role_{stat}_diff) dependency noted
-    in common.py."""
-    return _strip_delta_suffix(name) in ROLE_LEVEL_STAT_COLS
-
-
-def is_team_level_stat_col(name):
-    """True for one of the six team-level basic-stat diff columns that are
-    an exact sum of their five per-role counterparts, or its 3-minute
-    delta."""
-    return _strip_delta_suffix(name) in TEAM_LEVEL_STAT_COLS
-
-
 def _keep_only(predicate):
     """Invert a 'drop these' predicate into a 'drop everything except
     these (+ minute)' predicate, for the only_X variants below. `minute`
@@ -158,8 +124,6 @@ VARIANTS = {
     "only_objectives": _keep_only(is_objective_col),
     "only_structures": _keep_only(is_structure_col),
     "only_epic_monsters": _keep_only(is_epic_monster_col),
-    "team_level_only": is_role_level_stat_col,
-    "role_level_only": is_team_level_stat_col,
 }
 
 ABLATION_DROP_LABELS = {
@@ -178,20 +142,6 @@ ONLY_KEEP_LABELS = {
     "only_objectives": "objectives/towers",
     "only_structures": "towers/plates",
     "only_epic_monsters": "dragons/heralds/barons/elders",
-}
-
-# team_level_only / role_level_only test the exact collinearity
-# common.py flags for PER_ROLE_BREAKOUT: team_{stat}_diff (for the six
-# TEAM_LEVEL_STATS) is an exact sum of its five role_{stat}_diff columns.
-# "team_level_only" drops the five per-role duplicates and keeps the team
-# sums; "role_level_only" drops the six team-level sums and keeps the
-# per-role breakdown. Everything else (objectives, towers, damage, the
-# other five basic stats that only exist at role level, ...) is untouched
-# in both, so any AUC difference here is specifically about whether that
-# redundant pair is worth keeping both halves of.
-COLLINEARITY_DROP_LABELS = {
-    "team_level_only": "the five per-role gold/xp/minions/kills/assists/deaths diffs (keeping the team-level sums)",
-    "role_level_only": "the six team-level gold/xp/minions/kills/assists/deaths diffs (keeping the five per-role columns)",
 }
 
 CLOSENESS_VARIANTS = (
@@ -537,15 +487,6 @@ def print_summary(results):
             print(f"  {variant_key:<17} ({only['n_features']:>3} feats): AUC={only['auc']:.4f}  log_loss={only['log_loss']:.4f}  accuracy={only['accuracy']:.4f}  brier={only['brier']:.4f}")
             print(f"    AUC achieved using only {keep_label}: {only['auc'] / full['auc']:.1%} of full  (gap: {full['auc'] - only['auc']:.4f})")
 
-        print("\n  -- collinearity: team-level vs. role-level gold/xp/minions/kills/assists/deaths --")
-        for variant_key, drop_label in COLLINEARITY_DROP_LABELS.items():
-            collin = variants.get(variant_key)
-            if not collin:
-                continue
-
-            print(f"  {variant_key:<17} ({collin['n_features']:>3} feats): AUC={collin['auc']:.4f}  log_loss={collin['log_loss']:.4f}  accuracy={collin['accuracy']:.4f}  brier={collin['brier']:.4f}")
-            print(f"    AUC retained without {drop_label}: {collin['auc'] / full['auc']:.1%}  (gap: {full['auc'] - collin['auc']:.4f})")
-
 
 def print_closeness_rows(model_name, variant_label, rows):
     print(f"\n{model_name} -- {variant_label} AUC gap by game closeness (|{CLOSENESS_FEATURE}|):")
@@ -617,7 +558,7 @@ def main():
 
     ranks_df = load_match_ranks()
 
-    all_variant_labels = {**ABLATION_DROP_LABELS, **ONLY_KEEP_LABELS, **COLLINEARITY_DROP_LABELS}
+    all_variant_labels = {**ABLATION_DROP_LABELS, **ONLY_KEEP_LABELS}
 
     for model_name in MODEL_FITTERS:
         full_pred = predictions[(model_name, "full")]

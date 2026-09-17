@@ -1,3 +1,4 @@
+import random
 from pathlib import Path
 
 import joblib
@@ -16,6 +17,16 @@ from common import (
 )
 from db import get_engine, MATCH_SNAPSHOTS_TABLE
 
+
+def show_chart(fig, **kwargs):
+    """st.plotly_chart wrapper that disables click-and-drag zoom/pan on
+    every chart in the app, so dragging on a plot never fights with the
+    page's own scrolling."""
+    fig.update_layout(dragmode=False)
+    kwargs.setdefault("width", "stretch")
+    st.plotly_chart(fig, **kwargs)
+
+
 XGB_PREDICTIONS_FILE = Path("results/xgb_predictions.parquet")
 LOGREG_PREDICTIONS_FILE = Path("results/logreg_predictions.parquet")
 
@@ -30,8 +41,6 @@ LOGREG_CALIBRATION_IMG = Path("figures/logreg_calibration_curve.png")
 
 XGB_GRID_RESULTS = Path("results/xgb_grid_search_results.csv")
 LOGREG_GRID_RESULTS = Path("results/logreg_grid_search_results.csv")
-
-RUN_TIMES_FILE = Path("results/run_times.csv")
 
 ABLATION_RESULTS_FILE = Path("results/ablation_results.csv")
 ABLATION_BOOTSTRAP_FILE = Path("results/ablation_bootstrap_cis.csv")
@@ -182,6 +191,10 @@ def get_event_rows(full_df, match_id):
     )
 
 
+def _pick_random_match(matches):
+    st.session_state.selected_match = random.choice(matches)
+
+
 def render_real_match_tab():
     xgb_pred = load_xgb_predictions()
     logreg_pred = load_logreg_predictions()
@@ -200,7 +213,16 @@ def render_real_match_tab():
         st.error("No matches are common to both the XGBoost and logistic regression test predictions.")
         return
 
-    match_id = st.selectbox("Test match", common_matches)
+    if "selected_match" not in st.session_state or st.session_state.selected_match not in common_matches:
+        st.session_state.selected_match = common_matches[0]
+
+    sel_col, btn_col = st.columns([5, 1])
+    with sel_col:
+        match_id = st.selectbox("Test match", common_matches, key="selected_match")
+    with btn_col:
+        st.write("")
+        st.write("")
+        st.button("Random match", on_click=_pick_random_match, args=(common_matches,))
 
     g = merged[merged["match_id"] == match_id].sort_values("minute")
     if g.empty:
@@ -224,7 +246,7 @@ def render_real_match_tab():
         mode="lines", name="Logistic Regression", line=dict(color=MODEL_COLORS["LogisticRegression"], width=3, dash="dash"),
         hovertemplate="minute %{x}<br>Logistic Regression: %{y:.1%}<extra></extra>",
     ))
-    fig.add_hline(y=0.5, line_color="black", line_width=1)
+    fig.add_hline(y=0.5, line_color="white", line_width=3)
 
     if not events.empty:
         for _, ev in events.iterrows():
@@ -236,10 +258,7 @@ def render_real_match_tab():
                 font=dict(size=9, color=color), yshift=6 if ev["team"] == 100 else -6,
             )
     elif full_df is None:
-        st.info(
-            f"Couldn't load the `{MATCH_SNAPSHOTS_TABLE}` table from the database -- "
-            "showing win probability without objective/tower event annotations."
-        )
+        st.info(f"Couldn't load `{MATCH_SNAPSHOTS_TABLE}` from the database. No event annotations shown.")
 
     fig.update_layout(
         yaxis=dict(
@@ -254,7 +273,7 @@ def render_real_match_tab():
         margin=dict(t=80),
     )
 
-    st.plotly_chart(fig, width="stretch")
+    show_chart(fig, width="stretch")
 
 
 def build_feature_vector(feature_names, inputs):
@@ -354,18 +373,8 @@ def render_gauge(prob_blue, title, bar_color=None):
 
 def render_custom_scenario_tab():
     st.caption(
-        "Set a macro game state and get a live win-probability read from both models. Only "
-        "the aggregate team-level signals below are controlled -- every 3-minute-momentum "
-        "feature each model also uses is held at a neutral 0, so treat this as a simplified "
-        "sketch of model behavior, not a full replica of a real game."
-    )
-    st.info(
-        "**A real finding, not a UI bug:** both models lean overwhelmingly on the gold/XP "
-        "differential. With gold and XP lead left at 0, moving towers, objectives, or first "
-        "blood alone barely changes the prediction -- gold/XP dominate hard enough that "
-        "secondary signals mostly matter *through* the gold lead they typically come with, "
-        "not independently of it. To see towers/objectives move the needle, pair them with a "
-        "modest gold/XP lead (which is also what a real game with those events looks like)."
+        "Set a macro game state and see each model's win probability. Momentum features are "
+        "held at 0, so this is a simplified view, not a full replica of a real game."
     )
 
     booster = load_xgb_model()
@@ -387,7 +396,7 @@ def render_custom_scenario_tab():
         towers_200 = st.slider("Red towers destroyed", 0, 11, 0)
         dragons_diff = st.slider("Blue dragon advantage", -4, 4, 0)
     with c3:
-        heralds_diff = st.slider("Blue herald advantage", -2, 2, 0)
+        heralds_diff = st.slider("Blue herald advantage", -1, 1, 0)
         barons_diff = st.slider("Blue baron advantage", -3, 3, 0)
         elders_diff = st.slider("Blue elder dragon advantage", -2, 2, 0)
         first_blood = st.radio("First blood", ["Neither", "Blue", "Red"], horizontal=True)
@@ -419,7 +428,7 @@ def render_custom_scenario_tab():
         with m1:
             st.subheader("XGBoost")
             st.metric("Blue win probability", f"{prob_blue_xgb:.1%}")
-            st.plotly_chart(render_gauge(prob_blue_xgb, "XGBoost", MODEL_COLORS["XGBoost"]), width="stretch")
+            show_chart(render_gauge(prob_blue_xgb, "XGBoost", MODEL_COLORS["XGBoost"]), width="stretch")
     else:
         with m1:
             st.warning("`xgb_model.json` not found. Run `xgboost_train.py` first.")
@@ -441,7 +450,7 @@ def render_custom_scenario_tab():
         with m2:
             st.subheader("Logistic Regression")
             st.metric("Blue win probability", f"{prob_blue_logreg:.1%}")
-            st.plotly_chart(render_gauge(prob_blue_logreg, "Logistic Regression", MODEL_COLORS["LogisticRegression"]), width="stretch")
+            show_chart(render_gauge(prob_blue_logreg, "Logistic Regression", MODEL_COLORS["LogisticRegression"]), width="stretch")
     else:
         with m2:
             st.warning("`logreg_model.joblib` not found. Run `logistic_regression_train.py` first.")
@@ -449,10 +458,6 @@ def render_custom_scenario_tab():
 
 def render_explore_game():
     st.header("Explore a Game")
-    st.caption(
-        "Watch how each model's predicted win probability moved over a real held-out "
-        "match, or build a custom scenario and see how both models read it."
-    )
     real_tab, custom_tab = st.tabs(["Real Match", "Custom Scenario"])
     with real_tab:
         render_real_match_tab()
@@ -470,8 +475,6 @@ ABLATION_VARIANT_LABELS = {
     "only_objectives": "Only objectives/towers",
     "only_structures": "Only towers/plates",
     "only_epic_monsters": "Only dragons/heralds/barons/elders",
-    "team_level_only": "Team-level features only",
-    "role_level_only": "Role-level features only",
 }
 
 
@@ -501,18 +504,22 @@ def render_ablation_headline():
             x=[ABLATION_VARIANT_LABELS[v] for v in variant_order],
             y=group["auc"],
             name=model_name,
+            text=group["auc"].map(lambda v: f"{v:.4f}" if pd.notna(v) else ""),
+            textposition="outside",
             marker=dict(color=MODEL_COLORS.get(model_name), opacity=alphas),
         ))
     fig.update_layout(
-        barmode="group", yaxis_title="Test AUC", yaxis=dict(range=[0.5, 1.0]),
+        barmode="group", yaxis_title="Test AUC",
+        yaxis=dict(range=[0.6, 0.9]),
         title="Dropping one feature group at a time (faded = not distinguishable from full model at 95% CI)",
-        height=420,
+        height=440,
+        margin=dict(t=90),
     )
-    st.plotly_chart(fig, width="stretch")
+    show_chart(fig, width="stretch")
 
     only_variant_order = ["only_economy", "only_objectives", "only_structures", "only_epic_monsters"]
     if set(only_variant_order) & set(results["variant"].unique()):
-        st.markdown("**How well does each feature group predict on its own?**")
+        st.markdown("**How well does each feature group predict on its own?** *(axis zoomed to the data)*")
         fig2 = go.Figure()
         for model_name, group in results.groupby("model"):
             group = group.set_index("variant").reindex(only_variant_order)
@@ -520,65 +527,29 @@ def render_ablation_headline():
                 x=[ABLATION_VARIANT_LABELS[v] for v in only_variant_order],
                 y=group["auc"],
                 name=model_name,
+                text=group["auc"].map(lambda v: f"{v:.4f}" if pd.notna(v) else ""),
+                textposition="outside",
                 marker_color=MODEL_COLORS.get(model_name),
             ))
         fig2.update_layout(
-            barmode="group", yaxis_title="Test AUC", yaxis=dict(range=[0.5, 1.0]), height=380,
+            barmode="group", yaxis_title="Test AUC",
+            yaxis=dict(range=[0.6, 0.9]),
+            height=400,
+            margin=dict(t=50),
         )
-        st.plotly_chart(fig2, width="stretch")
+        show_chart(fig2, width="stretch")
 
     if bootstrap is not None:
-        st.markdown("**Match-level bootstrap AUC gap from each ablation vs. the full model (95% CI):**")
         display = bootstrap.copy()
         display["ablation"] = display["ablation"].map(ABLATION_VARIANT_LABELS).fillna(display["ablation"])
         display["95% CI"] = display.apply(lambda r: f"[{r['ci_low']:.4f}, {r['ci_high']:.4f}]", axis=1)
-        st.dataframe(
-            display[["model", "ablation", "mean_gap", "95% CI", "n_boot"]].rename(
-                columns={"model": "Model", "ablation": "Variant", "mean_gap": "Mean AUC gap", "n_boot": "Bootstrap draws"}
-            ),
-            width="stretch",
-        )
-
-
-def render_collinearity_breakdown():
-    st.subheader("Is per-lane (role-level) detail worth keeping, given team totals?")
-    st.caption(
-        "`team_level_only` keeps just the five team-total diffs; `role_level_only` keeps the "
-        "per-lane breakout instead (which sums back to those same totals). A gap near zero means "
-        "the redundant copy isn't adding real signal on top of the other."
-    )
-    bootstrap = load_csv_if_exists(ABLATION_BOOTSTRAP_FILE)
-    if bootstrap is None:
-        st.info("Run `ablation.py` to generate `ablation_bootstrap_cis.csv`.")
-        return
-
-    variants = ("team_level_only", "role_level_only")
-    subset = bootstrap[bootstrap["ablation"].isin(variants)]
-    if subset.empty:
-        st.info("No `team_level_only`/`role_level_only` rows found in `ablation_bootstrap_cis.csv`.")
-        return
-
-    fig = go.Figure()
-    for model_name, group in subset.groupby("model"):
-        group = group.set_index("ablation").reindex(variants)
-        not_sig = (group["ci_low"] <= 0) & (0 <= group["ci_high"])
-        alphas = [NOT_SIGNIFICANT_ALPHA if ns else SIGNIFICANT_ALPHA for ns in not_sig]
-        err_low = (group["mean_gap"] - group["ci_low"]).clip(lower=0)
-        err_high = (group["ci_high"] - group["mean_gap"]).clip(lower=0)
-        fig.add_trace(go.Bar(
-            x=[ABLATION_VARIANT_LABELS[v] for v in variants],
-            y=group["mean_gap"],
-            name=model_name,
-            marker=dict(color=MODEL_COLORS.get(model_name), opacity=alphas),
-            error_y=dict(type="data", array=err_high, arrayminus=err_low, visible=True),
-        ))
-    fig.add_hline(y=0, line_color="black", line_width=1)
-    fig.update_layout(
-        barmode="group", yaxis_title="AUC gap from full features",
-        title="Faded = 95% CI includes zero",
-        height=380,
-    )
-    st.plotly_chart(fig, width="stretch")
+        with st.expander("Match-level bootstrap AUC gap from each ablation vs. the full model (95% CI)"):
+            st.dataframe(
+                display[["model", "ablation", "mean_gap", "95% CI"]].rename(
+                    columns={"model": "Model", "ablation": "Variant", "mean_gap": "Mean AUC gap"}
+                ),
+                width="stretch",
+            )
 
 
 def render_rank_breakdown():
@@ -603,20 +574,30 @@ def render_rank_breakdown():
     subset = rank_df[rank_df["ablation"] == chosen]
     ranks = order_ranks(subset["rank"].unique())
 
+    # Distinct symbol + dash per model on top of color, since the gaps
+    # being compared are often within a couple thousandths of AUC of each
+    # other -- easy for two same-shaped points of different colors to blur
+    # together at a glance, harder for a filled circle vs. an open square.
+    MODEL_SYMBOLS = {"XGBoost": "circle", "LogisticRegression": "square"}
+    MODEL_DASH = {"XGBoost": "solid", "LogisticRegression": "dash"}
+
     fig = go.Figure()
     for model_name, group in subset.groupby("model"):
         group = group.set_index("rank").reindex(ranks)
         not_sig = (group["ci_low"] <= 0) & (0 <= group["ci_high"])
         color = MODEL_COLORS.get(model_name)
+        symbol = MODEL_SYMBOLS.get(model_name, "circle")
 
         fig.add_trace(go.Scatter(
             x=ranks, y=group["auc_gap"], mode="lines", name=model_name,
-            line=dict(color=color, width=1.5), opacity=0.6, showlegend=False, hoverinfo="skip",
+            line=dict(color=color, width=1.5, dash=MODEL_DASH.get(model_name, "solid")),
+            opacity=0.6, showlegend=False, hoverinfo="skip",
         ))
         marker_opacity = [NOT_SIGNIFICANT_ALPHA if ns else SIGNIFICANT_ALPHA for ns in not_sig]
         fig.add_trace(go.Scatter(
             x=ranks, y=group["auc_gap"], mode="markers", name=model_name,
-            marker=dict(color=color, size=9, opacity=marker_opacity),
+            marker=dict(color=color, size=10, symbol=symbol, opacity=marker_opacity,
+                        line=dict(color=color, width=1)),
             hovertemplate="%{x}<br>AUC gap: %{y:.4f}<extra>" + model_name + "</extra>",
         ))
 
@@ -625,10 +606,11 @@ def render_rank_breakdown():
         xaxis_title="Rank",
         yaxis_title=f"AUC gap from removing {ABLATION_VARIANT_LABELS.get(chosen, chosen).lower()}"
         if chosen.startswith("no_") else f"AUC gap ({ABLATION_VARIANT_LABELS.get(chosen, chosen).lower()})",
-        title="Faded points: 95% CI includes zero",
-        height=420,
+        yaxis=dict(tickformat=".3f"),
+        title="Faded/hollow-looking points: 95% CI includes zero. Circle = XGBoost, square = Logistic Regression.",
+        height=440,
     )
-    st.plotly_chart(fig, width="stretch")
+    show_chart(fig, width="stretch")
     with st.expander("Full rank breakdown table"):
         st.dataframe(subset, width="stretch")
 
@@ -651,26 +633,34 @@ def render_closeness_breakdown():
         st.info("No recognized ablation labels found in `ablation_closeness_breakdown.csv`.")
         return
 
-    chosen = st.radio(
-        "Feature group removed",
-        available,
-        format_func=lambda v: CLOSENESS_ABLATION_LABELS[v],
-        horizontal=True,
-    )
-    subset = closeness[closeness["ablation"] == chosen]
-
     bucket_order = ["close", "medium", "blowout"]
-    fig = go.Figure()
-    for model_name, group in subset.groupby("model"):
-        group = group.set_index("bucket").reindex(bucket_order)
-        fig.add_trace(go.Bar(x=bucket_order, y=group["auc_gap"], name=model_name))
-    fig.update_layout(
-        barmode="group",
-        xaxis_title="Game closeness (close <2.5k, medium 2.5k-7.5k, blowout >7.5k gold)",
-        yaxis_title=f"AUC gap from removing {CLOSENESS_ABLATION_LABELS[chosen]}",
-        height=380,
-    )
-    st.plotly_chart(fig, width="stretch")
+
+    for variant in available:
+        subset = closeness[closeness["ablation"] == variant]
+
+        st.markdown(f"**Feature group removed: {CLOSENESS_ABLATION_LABELS[variant]}**")
+
+        fig = go.Figure()
+        for model_name, group in subset.groupby("model"):
+            group = group.set_index("bucket").reindex(bucket_order)
+            fig.add_trace(go.Bar(
+                x=bucket_order, y=group["auc_gap"], name=model_name,
+                marker_color=MODEL_COLORS.get(model_name),
+                text=group["auc_gap"].map(lambda v: f"{v:+.4f}" if pd.notna(v) else ""),
+                textposition="outside",
+            ))
+        fig.add_hline(y=0, line_color="black", line_width=1)
+        fig.update_layout(
+            barmode="group",
+            xaxis_title="Game closeness (close <2.5k, medium 2.5k-7.5k, blowout >7.5k gold)",
+            yaxis_title="AUC gap",
+            yaxis=dict(tickformat=".3f", automargin=True),
+            xaxis=dict(automargin=True),
+            height=360,
+            margin=dict(l=60, r=20, t=20, b=60),
+        )
+        show_chart(fig, width="stretch")
+
     with st.expander("Full closeness breakdown table"):
         st.dataframe(closeness, width="stretch")
 
@@ -702,7 +692,7 @@ def render_calibration_and_importance():
             top = imp_df.sort_values("gain", ascending=False).head(top_n).iloc[::-1]
             fig = go.Figure(go.Bar(x=top["gain"], y=top["feature"], orientation="h", marker_color=MODEL_COLORS["XGBoost"]))
             fig.update_layout(height=max(400, 22 * len(top)), margin=dict(l=220))
-            st.plotly_chart(fig, width="stretch")
+            show_chart(fig, width="stretch")
         else:
             st.info("Run `xgboost_train.py` to generate `xgb_feature_importances.csv`.")
     with col2:
@@ -717,7 +707,7 @@ def render_calibration_and_importance():
             colors = ["#2ca02c" if c >= 0 else "#d62728" for c in top["coefficient"]]
             fig = go.Figure(go.Bar(x=top["coefficient"], y=top["feature"], orientation="h", marker_color=colors))
             fig.update_layout(height=max(400, 22 * len(top)), margin=dict(l=220))
-            st.plotly_chart(fig, width="stretch")
+            show_chart(fig, width="stretch")
         else:
             st.info("Run `logistic_regression_train.py` to generate `logreg_feature_importances.csv`.")
 
@@ -739,22 +729,45 @@ def render_minute_bucket_comparison():
 
     combined = xgb_bucket_df.merge(logreg_bucket_df, on="minutes", how="outer")
 
-    fig = go.Figure()
-    fig.add_trace(go.Scatter(x=combined["minutes"], y=combined["xgb_auc"], name="XGBoost AUC", mode="lines+markers"))
-    fig.add_trace(go.Scatter(x=combined["minutes"], y=combined["logreg_auc"], name="Logistic Regression AUC", mode="lines+markers"))
-    fig.update_layout(yaxis_title="AUC", xaxis_title="Game minute bucket", height=380)
-    st.plotly_chart(fig, width="stretch")
+    # merge(how="outer") sorts the join key lexically ("1-5", "11-15",
+    # "16-20", ..., "6-10"), which scrambles minute order. Put the buckets
+    # back in chronological order using the same MINUTE_BUCKETS the
+    # breakdown was computed from.
+    bucket_labels = [f"{start}-{end}" for start, end in MINUTE_BUCKETS]
+    combined = combined.set_index("minutes").reindex(bucket_labels).reset_index()
 
-    st.dataframe(
-        combined[["minutes", "xgb_rows", "xgb_auc", "xgb_log_loss", "xgb_accuracy", "xgb_brier",
-                  "logreg_rows", "logreg_auc", "logreg_log_loss", "logreg_accuracy", "logreg_brier"]]
-        .round(4),
-        width="stretch",
+    fig = go.Figure()
+    fig.add_trace(go.Scatter(
+        x=combined["minutes"], y=combined["xgb_auc"], name="XGBoost AUC", mode="lines+markers",
+        line=dict(color=MODEL_COLORS["XGBoost"]),
+        marker=dict(symbol="circle", size=9, color=MODEL_COLORS["XGBoost"]),
+        hovertemplate="%{x}<br>XGBoost AUC: %{y:.4f}<extra></extra>",
+    ))
+    fig.add_trace(go.Scatter(
+        x=combined["minutes"], y=combined["logreg_auc"], name="Logistic Regression AUC", mode="lines+markers",
+        line=dict(color=MODEL_COLORS["LogisticRegression"], dash="dash"),
+        marker=dict(symbol="square", size=9, color=MODEL_COLORS["LogisticRegression"]),
+        hovertemplate="%{x}<br>Logistic Regression AUC: %{y:.4f}<extra></extra>",
+    ))
+    fig.update_layout(
+        yaxis_title="AUC", xaxis_title="Game minute bucket",
+        yaxis=dict(range=[0.6, 0.95], tickformat=".3f"),
+        xaxis=dict(type="category", categoryorder="array", categoryarray=bucket_labels),
+        height=400,
     )
+    show_chart(fig, width="stretch")
+
+    with st.expander("Full minute-bucket breakdown table"):
+        st.dataframe(
+            combined[["minutes", "xgb_rows", "xgb_auc", "xgb_log_loss", "xgb_accuracy", "xgb_brier",
+                      "logreg_rows", "logreg_auc", "logreg_log_loss", "logreg_accuracy", "logreg_brier"]]
+            .round(4),
+            width="stretch",
+        )
 
 
 def render_pipeline_details():
-    with st.expander("Pipeline details: hyperparameter search and run times"):
+    with st.expander("Pipeline details: hyperparameter search"):
         gcol1, gcol2 = st.columns(2)
         with gcol1:
             st.markdown("**XGBoost**")
@@ -771,11 +784,6 @@ def render_pipeline_details():
             else:
                 st.info("`logreg_grid_search_results.csv` not found.")
 
-        run_times = load_csv_if_exists(RUN_TIMES_FILE)
-        if run_times is not None:
-            st.markdown("**Last pipeline run times**")
-            st.dataframe(run_times, width="stretch")
-
 
 def render_findings():
     st.header("Findings")
@@ -784,8 +792,6 @@ def render_findings():
     render_closeness_breakdown()
     st.divider()
     render_rank_breakdown()
-    st.divider()
-    render_collinearity_breakdown()
     st.divider()
     render_calibration_and_importance()
     st.divider()
