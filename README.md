@@ -49,4 +49,4 @@ The effect is strongest at high skill tiers. The objectives-only AUC gap is smal
 
 <img src="figures/ablation_rank_breakdown.png" width="640">
 
-Currently limited to NA (`PLATFORM`/`REGION` are hardcoded in `collect_data.py`).
+Currently limited to NA.
