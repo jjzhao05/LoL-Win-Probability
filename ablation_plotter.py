@@ -1,5 +1,3 @@
-import sys
-from datetime import datetime
 from pathlib import Path
 
 import matplotlib.pyplot as plt
@@ -7,15 +5,11 @@ import numpy as np
 import pandas as pd
 
 from common import MINUTE_BUCKETS, MODEL_COLORS, evaluate_by_minute_bucket
+from logging_utils import run_with_file_logging
 
 
-# Reads the CSVs ablation.py already writes -- no xgboost import, no
-# retraining, no database. Run this after ablation.py, and again any time
-# you just want to re-draw the figures (e.g. after tweaking a title)
-# without repeating the ~expensive training run. The minute-bucket plot
-# additionally reads the two training scripts' saved prediction files and
-# needs common.py (and therefore sklearn) to recompute per-bucket metrics
-# from them -- everything else here stays pure-CSV.
+# Reads the CSVs ablation.py writes; run this after ablation.py, and again
+# any time you just want to re-draw the figures without retraining.
 RESULTS_FILE = Path("results/ablation_results.csv")
 BOOTSTRAP_RESULTS_FILE = Path("results/ablation_bootstrap_cis.csv")
 CLOSENESS_RESULTS_FILE = Path("results/ablation_closeness_breakdown.csv")
@@ -36,34 +30,24 @@ LOG_DIR = Path("logs")
 MINUTE_BUCKET_LABELS = [f"{start}-{end}" for start, end in MINUTE_BUCKETS]
 
 CLOSENESS_BUCKET_LABELS = ["close", "medium", "blowout"]
-# Matches ablation.py's fixed CLOSENESS_BINS ([0, 2500, 7500, inf]) -- used
-# only to label the x-axis with the actual thresholds.
+# Matches ablation.py's fixed CLOSENESS_BINS ([0, 2500, 7500, inf]).
 CLOSENESS_BUCKET_TICK_LABELS = ["Close\n(<2.5k gold)", "Medium\n(2.5k-7.5k gold)", "Blowout\n(>7.5k gold)"]
 
-# Riot's ranked tiers, low to high, matching collect_data.py's ten skill
-# brackets. Duplicated from ablation.py rather than imported, so this
-# script never pulls in xgboost/sklearn just to draw a chart.
+# Riot's ranked tiers, low to high. Duplicated from ablation.py so this
+# script doesn't need to import xgboost/sklearn just to draw a chart.
 RANK_ORDER = [
     "IRON", "BRONZE", "SILVER", "GOLD", "PLATINUM",
     "EMERALD", "DIAMOND", "MASTER", "GRANDMASTER", "CHALLENGER",
 ]
 
-# A gap whose 95% CI is drawn faded/hollow rather than solid -- it means
-# the CI on that gap includes zero, i.e. it isn't distinguishable from no
-# difference at all at this sample size. This project's ablation gaps are
-# almost all small in absolute terms (well under 0.02 AUC out of a 0.5-1.0
-# scale), so it's easy for a bar chart or a connected line to make a
-# noise-level wiggle look like a real effect. Fading/hollowing those points
-# instead of just coloring every point the same is a deliberate choice to
-# not overstate them.
+# A gap whose 95% CI includes zero (not distinguishable from no difference)
+# is drawn faded/hollow instead of solid.
 SIGNIFICANT_ALPHA = 1.0
 NOT_SIGNIFICANT_ALPHA = 0.35
 
-# The variants the "economy vs objectives" headline plot shows -- full plus
-# the four no_X/only_X variants the report text discusses. The other
-# variants (no_structures, no_epic_monsters, only_structures,
-# only_epic_monsters) are in ablation_results.csv but left off this
-# particular chart to keep it readable.
+# The variants the headline "economy vs objectives" plot shows. The rest
+# (no_structures, no_epic_monsters, etc.) are in the CSV but left off this
+# chart to keep it readable.
 AUC_PLOT_VARIANTS = ["full", "no_economy", "no_objectives", "only_economy", "only_objectives"]
 AUC_PLOT_LABELS = {
     "full": "Full features",
@@ -93,12 +77,8 @@ def load_csv(path, required_for):
 
 
 def save_auc_by_variant_plot(results_df, bootstrap_df, out_path=AUC_BY_VARIANT_PLOT):
-    """Grouped bar chart of raw test AUC for the full feature set plus the
-    no_economy/no_objectives/only_economy/only_objectives variants. Error
-    bars show each ablated bar's 95% bootstrap CI (translated from the CI
-    on the full-vs-ablated AUC gap onto the ablated AUC itself); a bar is
-    drawn faded when that CI includes zero, i.e. that variant's AUC isn't
-    reliably different from the full model's."""
+    """Grouped bar chart of test AUC per variant, with 95% bootstrap CI
+    error bars; a bar is faded when its CI includes zero."""
     by_model = {
         model: group.set_index("variant") for model, group in results_df.groupby("model")
     }
@@ -157,9 +137,8 @@ def save_auc_by_variant_plot(results_df, bootstrap_df, out_path=AUC_BY_VARIANT_P
 
 
 def save_closeness_plot(closeness_df, out_path=CLOSENESS_PLOT):
-    """One panel per variant in CLOSENESS_PLOT_VARIANTS: AUC gap from full
-    features, grouped by model, across close/medium/blowout buckets. A bar
-    is faded when its own bucket-level bootstrap CI includes zero."""
+    """One panel per variant: AUC gap from full features by closeness
+    bucket, faded when that bucket's CI includes zero."""
     if closeness_df.empty:
         return
 
@@ -208,12 +187,8 @@ def save_closeness_plot(closeness_df, out_path=CLOSENESS_PLOT):
 
 
 def save_rank_plot(rank_df, out_path=RANK_PLOT):
-    """One panel per variant in RANK_PLOT_VARIANTS: AUC gap from full
-    features, one line per model, across rank tiers Iron through
-    Challenger. Points whose own rank-level bootstrap CI includes zero are
-    drawn as small hollow markers instead of solid filled ones, so a
-    noise-level wiggle at a given rank doesn't read the same as a real
-    difference."""
+    """One panel per variant: AUC gap from full features by rank, one line
+    per model. Points whose CI includes zero are drawn hollow."""
     if rank_df.empty:
         return
 
@@ -284,12 +259,7 @@ def compute_minute_bucket_table(pred_df, model_name):
 
 
 def save_minute_bucket_plot(combined_df, out_path=MINUTE_BUCKET_PLOT):
-    """Line chart of test AUC by minute bucket, one line per model. Unlike
-    the ablation gap plots above, this is a plot of the metric itself (it
-    swings from ~0.6 to ~0.91 across buckets), not a small difference
-    between two conditions, so it doesn't need the same
-    faded/not-distinguishable-from-zero treatment -- the fixed 0.5-1.0
-    y-axis keeps it on the same honest scale as the other AUC figures."""
+    """Line chart of test AUC by minute bucket, one line per model."""
     fig, ax = plt.subplots(figsize=(9, 5.5))
 
     for model_name, group in combined_df.groupby("model"):
@@ -353,37 +323,5 @@ def main():
     print("Saved:", MINUTE_BUCKET_PLOT)
 
 
-class Tee:
-    """Mirrors writes to every stream it wraps (e.g. the real console plus
-    a log file), so redirecting sys.stdout/sys.stderr through one of these
-    logs a full run without touching any of the print() calls above."""
-
-    def __init__(self, *streams):
-        self.streams = streams
-
-    def write(self, data):
-        for stream in self.streams:
-            stream.write(data)
-            stream.flush()
-
-    def flush(self):
-        for stream in self.streams:
-            stream.flush()
-
-
 if __name__ == "__main__":
-    LOG_DIR.mkdir(parents=True, exist_ok=True)
-    log_path = LOG_DIR / f"ablation_plotter_run_{datetime.now():%Y%m%d_%H%M%S}.log"
-
-    real_stdout, real_stderr = sys.stdout, sys.stderr
-
-    with open(log_path, "w", encoding="utf-8") as log_f:
-        sys.stdout = Tee(real_stdout, log_f)
-        sys.stderr = Tee(real_stderr, log_f)
-
-        try:
-            print(f"Logging full run output to: {log_path}")
-            main()
-        finally:
-            sys.stdout = real_stdout
-            sys.stderr = real_stderr
+    run_with_file_logging(LOG_DIR, "ablation_plotter", main)

@@ -1,11 +1,10 @@
-import sys
-from datetime import datetime
 from pathlib import Path
 
 import matplotlib.pyplot as plt
 import pandas as pd
 
 from common import MINUTE_BUCKETS, evaluate_by_minute_bucket
+from logging_utils import run_with_file_logging
 
 
 XGB_PREDICTIONS_FILE = Path("results/xgb_predictions.parquet")
@@ -95,37 +94,5 @@ def main():
     print("Saved:", OUTPUT_PLOT)
 
 
-class Tee:
-    """Mirrors writes to every stream it wraps (e.g. the real console plus
-    a log file), so redirecting sys.stdout/sys.stderr through one of these
-    logs a full run without touching any of the print() calls above."""
-
-    def __init__(self, *streams):
-        self.streams = streams
-
-    def write(self, data):
-        for stream in self.streams:
-            stream.write(data)
-            stream.flush()
-
-    def flush(self):
-        for stream in self.streams:
-            stream.flush()
-
-
 if __name__ == "__main__":
-    LOG_DIR.mkdir(parents=True, exist_ok=True)
-    log_path = LOG_DIR / f"minute_bucket_plot_run_{datetime.now():%Y%m%d_%H%M%S}.log"
-
-    real_stdout, real_stderr = sys.stdout, sys.stderr
-
-    with open(log_path, "w", encoding="utf-8") as log_f:
-        sys.stdout = Tee(real_stdout, log_f)
-        sys.stderr = Tee(real_stderr, log_f)
-
-        try:
-            print(f"Logging full run output to: {log_path}")
-            main()
-        finally:
-            sys.stdout = real_stdout
-            sys.stderr = real_stderr
+    run_with_file_logging(LOG_DIR, "minute_bucket_plot", main)

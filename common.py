@@ -30,25 +30,9 @@ BASIC_STATS = [
     "wards_killed",
 ]
 
-DAMAGE_STATS = [
-    "magic_damage_done",
-    "magic_damage_done_to_champions",
-    "magic_damage_taken",
-    "physical_damage_done",
-    "physical_damage_done_to_champions",
-    "physical_damage_taken",
-    "true_damage_done",
-    "true_damage_done_to_champions",
-    "true_damage_taken",
-]
-
-# The "smart" subset of DAMAGE_STATS actually used as model features.
-# Damage *to champions* is the one damage signal that is not just a
-# restatement of gold/CS -- it can show a team out-fighting the other
-# side before that shows up as a kill or a gold lead. Damage done to
-# non-champion targets (mostly farm) and damage taken (mostly
-# itemization/tankiness) are left out to avoid recreating the same
-# overlap the rest of the feature set was trimmed of.
+# Damage *to champions* is the one damage signal that isn't just a
+# restatement of gold/CS. Damage to non-champion targets (mostly farm) and
+# damage taken (mostly itemization) are left out as redundant.
 COMBAT_DAMAGE_STATS = [
     "magic_damage_done_to_champions",
     "physical_damage_done_to_champions",

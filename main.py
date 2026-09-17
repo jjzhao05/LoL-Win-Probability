@@ -8,18 +8,11 @@ import csv
 from datetime import datetime
 
 
-# Each entry is one pipeline step. `inputs` are files that, if modified more
-# recently than the step's outputs, mean the step is stale and must rerun
-# (the step's own source file is always included so editing a script
-# invalidates its own cached outputs). `outputs` are what the step produces;
-# a step is considered "up to date" (and skipped by default) only when every
-# output already exists -- and for a directory output, is non-empty -- and
-# none of its inputs are newer than the oldest output.
-#
-# This is what lets `python main.py` be re-run cheaply after a downstream
-# script changes (e.g. logistic_regression_train.py) without redoing the
-# ~30 minute xgboost_train.py grid search: xgboost_train.py's own inputs
-# haven't changed, so its outputs are still valid and it's skipped.
+# Each entry is one pipeline step. `inputs` are files that, if newer than
+# the step's outputs, mean the step is stale and must rerun (the step's own
+# source file is always included). `outputs` are what the step produces; a
+# step is skipped only when every output exists (non-empty, for a
+# directory) and no input is newer than the oldest output.
 PIPELINE = [
     {
         "script": "summary_stats.py",
@@ -85,8 +78,6 @@ PIPELINE = [
     },
 ]
 
-SCRIPTS = [step["script"] for step in PIPELINE]
-
 LOG_FILE = Path("results/run_times.csv")
 
 LOG_DIR = Path("logs")
@@ -135,18 +126,9 @@ def run_script(script, log_f):
 
     start = time.time()
 
-    # Stream the child process's combined stdout/stderr line by line so it
-    # shows up in the console exactly as before, while also being written
-    # to the run log as it happens (not just at the end).
-    #
-    # `-u` (and PYTHONUNBUFFERED, belt-and-suspenders for any subprocess the
-    # child itself spawns) is required here: Python only line-buffers stdout
-    # when it's attached to a real terminal. The moment stdout is piped --
-    # exactly what we're doing to capture it into the log file -- Python
-    # switches to full block buffering, so a script's print() calls can sit
-    # unflushed for minutes with nothing reaching the console or the log,
-    # even though it's actively running. Without this flag a long-running
-    # step like xgboost_train.py can look hung when it isn't.
+    # `-u` (and PYTHONUNBUFFERED) force unbuffered stdout: piping a child's
+    # stdout switches Python to full block buffering, so without this a
+    # long-running step's print() calls can sit unflushed for minutes.
     child_env = os.environ.copy()
     child_env["PYTHONUNBUFFERED"] = "1"
 

@@ -1,6 +1,4 @@
 import csv
-import sys
-from datetime import datetime
 from pathlib import Path
 
 import numpy as np
@@ -23,6 +21,7 @@ from common import (
     print_bucket_rows,
     print_metrics,
 )
+from logging_utils import run_with_file_logging
 
 
 ECONOMY_KEYWORDS = ["gold", "xp", "level"]
@@ -48,17 +47,11 @@ LOG_DIR = Path("logs")
 CLOSENESS_FEATURE = "team_total_gold_diff"
 CLOSENESS_BUCKET_LABELS = ["close", "medium", "blowout"]
 
-# Fixed gold-lead thresholds rather than terciles: a game is "close" under
-# 2500 gold, "medium" from 2500 up to 7500, and a "blowout" above that,
-# regardless of how the rest of the dataset happens to be distributed. This
-# keeps a bucket's meaning fixed (a 2000 gold lead is always "close") instead
-# of shifting with whatever games happen to be in the sample.
+# Fixed gold-lead thresholds rather than terciles, so a bucket's meaning
+# (e.g. "close" = under 2500 gold) doesn't shift with the sample.
 CLOSENESS_BINS = [0, 2500, 7500, np.inf]
 
-# Riot's ranked tiers, low to high, matching collect_data.py's ten skill
-# brackets. Only used to order printed/saved rows -- any rank value present
-# in the data but missing from this list is still included, just sorted
-# after the ones that are in it.
+# Riot's ranked tiers, low to high. Only used to order printed/saved rows.
 RANK_ORDER = [
     "IRON", "BRONZE", "SILVER", "GOLD", "PLATINUM",
     "EMERALD", "DIAMOND", "MASTER", "GRANDMASTER", "CHALLENGER",
@@ -76,11 +69,7 @@ XGB_MAX_ESTIMATORS = 600
 XGB_EARLY_STOPPING_ROUNDS = 30
 
 LOGREG_CONFIG = {"C": 1.0}
-# sklearn >=1.8 deprecates the `penalty` argument in favor of `l1_ratio`
-# (l1_ratio=0 == old penalty="l2", l1_ratio=1 == old penalty="l1"; see the
-# FutureWarning sklearn raises otherwise) -- LOGREG_L1_RATIO=0 keeps the
-# same L2/ridge behavior this project has always used, just spelled the
-# way that stays valid once `penalty` is actually removed in 1.10.
+# l1_ratio=0 is the sklearn >=1.8 spelling of the old penalty="l2" default.
 LOGREG_L1_RATIO = 0
 LOGREG_MAX_ITER = 1000
 
@@ -249,12 +238,8 @@ def fit_xgb(X_fit, y_fit, X_val, y_val, X_test):
 
 
 def fit_logreg(X_fit, y_fit, X_val, y_val, X_test):
-    # Per-role diff columns are NaN on rows where collect_data.py couldn't
-    # resolve one of the five roles for a match (see
-    # logistic_regression_train.py for the full explanation). XGBoost
-    # handles that natively; LogisticRegression doesn't, so impute with the
-    # training-set median first. X_val is unused by this fitter (no grid
-    # search here, so no validation split needed) and isn't imputed.
+    # Per-role diffs can be NaN (see logistic_regression_train.py); impute
+    # with the training-set median before scaling. X_val is unused here.
     imputer = SimpleImputer(strategy="median")
     X_fit = imputer.fit_transform(X_fit)
     X_test = imputer.transform(X_test)
@@ -364,12 +349,8 @@ def closeness_breakdown(merged, prob_col_full, prob_col_ablated, ablation_label,
         auc_full = roc_auc_score(y, g[prob_col_full].to_numpy())
         auc_ablated = roc_auc_score(y, g[prob_col_ablated].to_numpy())
 
-        # Match-level bootstrap CI on this bucket's own gap, not just the
-        # whole-dataset one -- a bucket is a fraction of the full test set,
-        # so its point-estimate gap needs its own uncertainty band. Without
-        # this, a bucket-to-bucket wiggle of a few thousandths of an AUC
-        # point (well within noise at this sample size) can look like a
-        # real pattern once it's drawn as a bar or a line.
+        # Match-level bootstrap CI on this bucket's own gap, since a bucket
+        # is only a fraction of the full test set.
         ci = bootstrap_auc_gap(g, prob_col_full, prob_col_ablated, target_col=target_col, n_boot=N_BOOTSTRAP_SLICE)
 
         rows.append({
@@ -406,9 +387,7 @@ def rank_breakdown(merged, prob_col_full, prob_col_ablated, ablation_label, targ
         auc_full = roc_auc_score(y, g[prob_col_full].to_numpy())
         auc_ablated = roc_auc_score(y, g[prob_col_ablated].to_numpy())
 
-        # See the matching comment in closeness_breakdown -- each rank
-        # tier is a small slice (a few hundred matches), so its own gap
-        # needs its own CI rather than borrowing the whole-dataset one.
+        # Each rank tier is a small slice, so it gets its own CI too.
         ci = bootstrap_auc_gap(g, prob_col_full, prob_col_ablated, target_col=target_col, n_boot=N_BOOTSTRAP_SLICE)
 
         rows.append({
@@ -516,24 +495,6 @@ def print_rank_rows(model_name, variant_label, rows):
         )
 
 
-class Tee:
-    """Mirrors writes to every stream it wraps (e.g. the real console plus
-    a log file), so redirecting sys.stdout/sys.stderr through one of these
-    logs a full run without touching any of the print() calls above."""
-
-    def __init__(self, *streams):
-        self.streams = streams
-
-    def write(self, data):
-        for stream in self.streams:
-            stream.write(data)
-            stream.flush()
-
-    def flush(self):
-        for stream in self.streams:
-            stream.flush()
-
-
 def main():
     results = []
     predictions = {}
@@ -611,18 +572,4 @@ def main():
 
 
 if __name__ == "__main__":
-    LOG_DIR.mkdir(parents=True, exist_ok=True)
-    log_path = LOG_DIR / f"ablation_run_{datetime.now():%Y%m%d_%H%M%S}.log"
-
-    real_stdout, real_stderr = sys.stdout, sys.stderr
-
-    with open(log_path, "w", encoding="utf-8") as log_f:
-        sys.stdout = Tee(real_stdout, log_f)
-        sys.stderr = Tee(real_stderr, log_f)
-
-        try:
-            print(f"Logging full run output to: {log_path}")
-            main()
-        finally:
-            sys.stdout = real_stdout
-            sys.stderr = real_stderr
+    run_with_file_logging(LOG_DIR, "ablation", main)

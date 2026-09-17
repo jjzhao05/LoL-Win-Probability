@@ -1,5 +1,3 @@
-import sys
-from datetime import datetime
 from pathlib import Path
 
 import numpy as np
@@ -8,6 +6,7 @@ import matplotlib.pyplot as plt
 
 from common import MODEL_COLORS, RANDOM_STATE, TEAMS, TOWER_PARTS
 from db import get_engine, MATCH_SNAPSHOTS_TABLE
+from logging_utils import run_with_file_logging
 
 
 XGB_PREDICTIONS_FILE = Path("results/xgb_predictions.parquet")
@@ -390,37 +389,5 @@ def main():
         plot_match(merged, full_df, match_id)
 
 
-class Tee:
-    """Mirrors writes to every stream it wraps (e.g. the real console plus
-    a log file), so redirecting sys.stdout/sys.stderr through one of these
-    logs a full run without touching any of the print() calls above."""
-
-    def __init__(self, *streams):
-        self.streams = streams
-
-    def write(self, data):
-        for stream in self.streams:
-            stream.write(data)
-            stream.flush()
-
-    def flush(self):
-        for stream in self.streams:
-            stream.flush()
-
-
 if __name__ == "__main__":
-    LOG_DIR.mkdir(parents=True, exist_ok=True)
-    log_path = LOG_DIR / f"probability_plot_run_{datetime.now():%Y%m%d_%H%M%S}.log"
-
-    real_stdout, real_stderr = sys.stdout, sys.stderr
-
-    with open(log_path, "w", encoding="utf-8") as log_f:
-        sys.stdout = Tee(real_stdout, log_f)
-        sys.stderr = Tee(real_stderr, log_f)
-
-        try:
-            print(f"Logging full run output to: {log_path}")
-            main()
-        finally:
-            sys.stdout = real_stdout
-            sys.stderr = real_stderr
+    run_with_file_logging(LOG_DIR, "probability_plot", main)

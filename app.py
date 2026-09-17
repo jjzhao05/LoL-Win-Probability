@@ -56,9 +56,7 @@ RANK_ORDER = [
     "EMERALD", "DIAMOND", "MASTER", "GRANDMASTER", "CHALLENGER",
 ]
 
-# A gap whose 95% CI includes zero isn't distinguishable from no effect at
-# this sample size -- drawn faded/hollow so a noise-level wiggle doesn't
-# read the same as a real difference. Mirrors ablation_plotter.py.
+# A gap whose 95% CI includes zero is drawn faded/hollow. Mirrors ablation_plotter.py.
 SIGNIFICANT_ALPHA = 1.0
 NOT_SIGNIFICANT_ALPHA = 0.35
 
@@ -438,9 +436,7 @@ def render_custom_scenario_tab():
         row = build_feature_vector(feature_names, inputs)
         X_row = row.to_frame().T[feature_names]
 
-        # Older model files saved before the median-imputation fix won't
-        # have this key -- fall back to the raw (slider-built, so already
-        # NaN-free) row in that case.
+        # Older model files predate median-imputation; fall back to the raw row.
         imputer = logreg.get("imputer")
         if imputer is not None:
             X_row = pd.DataFrame(imputer.transform(X_row), columns=feature_names)
@@ -575,9 +571,7 @@ def render_rank_breakdown():
     ranks = order_ranks(subset["rank"].unique())
 
     # Distinct symbol + dash per model on top of color, since the gaps
-    # being compared are often within a couple thousandths of AUC of each
-    # other -- easy for two same-shaped points of different colors to blur
-    # together at a glance, harder for a filled circle vs. an open square.
+    # compared are often within a couple thousandths of AUC of each other.
     MODEL_SYMBOLS = {"XGBoost": "circle", "LogisticRegression": "square"}
     MODEL_DASH = {"XGBoost": "solid", "LogisticRegression": "dash"}
 
@@ -700,10 +694,8 @@ def render_calibration_and_importance():
         imp_df = load_csv_if_exists(LOGREG_FEATURE_IMPORTANCE_CSV)
         if imp_df is not None:
             top = imp_df.sort_values("abs_coefficient", ascending=False).head(top_n).iloc[::-1]
-            # Sign color here is deliberately not MODEL_COLORS["XGBoost"] -- this
-            # panel is logistic regression's own chart, and reusing the other
-            # model's identity color for "positive coefficient" would blur the
-            # two meanings together.
+            # Not MODEL_COLORS["XGBoost"]: this is logistic regression's own
+            # chart, so it gets its own positive/negative color pair.
             colors = ["#2ca02c" if c >= 0 else "#d62728" for c in top["coefficient"]]
             fig = go.Figure(go.Bar(x=top["coefficient"], y=top["feature"], orientation="h", marker_color=colors))
             fig.update_layout(height=max(400, 22 * len(top)), margin=dict(l=220))
@@ -729,10 +721,8 @@ def render_minute_bucket_comparison():
 
     combined = xgb_bucket_df.merge(logreg_bucket_df, on="minutes", how="outer")
 
-    # merge(how="outer") sorts the join key lexically ("1-5", "11-15",
-    # "16-20", ..., "6-10"), which scrambles minute order. Put the buckets
-    # back in chronological order using the same MINUTE_BUCKETS the
-    # breakdown was computed from.
+    # merge(how="outer") sorts the join key lexically, scrambling minute
+    # order, so put the buckets back in chronological order.
     bucket_labels = [f"{start}-{end}" for start, end in MINUTE_BUCKETS]
     combined = combined.set_index("minutes").reindex(bucket_labels).reset_index()
 

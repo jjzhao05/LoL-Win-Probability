@@ -1,11 +1,9 @@
 import os
 import json
-import sys
 import time
 import random
 import threading
 from collections import deque
-from datetime import datetime
 from pathlib import Path
 
 import requests
@@ -13,16 +11,14 @@ import pandas as pd
 from dotenv import load_dotenv
 
 from db import get_engine, MATCH_SNAPSHOTS_TABLE
+from logging_utils import run_with_file_logging
 
 load_dotenv()
 
 LOG_DIR = Path("logs")
 
-
-# Same value as common.RANDOM_STATE, kept as a local constant since this
-# script doesn't otherwise import common.py. Seeds the puuid-pool shuffles
-# below so which puuids get queried (and in what order) is reproducible
-# across runs.
+# Same value as common.RANDOM_STATE, kept local since this script otherwise
+# has no reason to import common.py. Seeds the puuid-pool shuffles below.
 RANDOM_STATE = 101705
 random.seed(RANDOM_STATE)
 
@@ -51,11 +47,7 @@ MIN_GAME_DURATION_SEC = 900
 MATCH_CHUNK_SIZE = 25
 
 # How many not-yet-queried puuids to pull match ids from per batch, and how
-# much to grow a bracket's puuid pool by once every pool puuid has been
-# queried. A single batch of raw candidate ids reliably falls short of
-# TARGET_GAMES_PER_BRACKET once games get discarded for being off-patch,
-# too short, wrong queue, etc, so process_bracket loops over batches (and
-# grows the pool) instead of doing one batch and stopping.
+# much to grow a bracket's puuid pool by once every pool puuid is queried.
 QUERIED_BATCH_SIZE = 200
 POOL_GROWTH_STEP = 400
 
@@ -258,14 +250,9 @@ def get_timeline(match_id):
 
 
 def collect_match_ids(bracket_name, puuid_batch, processed_ids, global_seen):
-    """Pull recent ranked match ids for one batch of puuids.
-
-    Unlike the old version, this doesn't stop early once some target count
-    of candidates is reached -- it always queries every puuid in the batch,
-    since the caller (process_bracket) is the one responsible for deciding
-    when enough matches have actually been collected and for pulling
-    another batch if not.
-    """
+    """Pull recent ranked match ids for every puuid in the batch. The
+    caller (process_bracket) decides when enough matches have been
+    collected and whether to pull another batch."""
     match_ids = []
     seen = set(processed_ids) | set(global_seen)
     for puuid in puuid_batch:
@@ -424,10 +411,6 @@ def _rune_setup(p):
     ) if result[field] != ""]
     result["all_runes"] = "|".join(ordered)
     return result
-
-
-def _keystone(p):
-    return str(_rune_setup(p).get("keystone", ""))
 
 
 def _team_rune_field(team_id, participants, rune_field):
@@ -953,18 +936,11 @@ def extract_snapshots(match, timeline):
     return rows
 
 
-# The columns of the final dataset, in the order they appear in each row.
-#
-# Every field described in `extract_snapshots` gets computed for every role/team,
-# but not everything computed is useful for modeling. A few kinds of field are
-# deliberately left out below:
-#   - identifiers/strings that don't help a model (participant_id, champion name)
-#   - values already implied by other kept columns (all_runes duplicates the
-#     individual rune fields; cs duplicates minions_killed + jungle_minions_killed;
-#     hp_pct/power_pct duplicate health/health_max and power/power_max;
-#     total_damage_done(_to_champions) duplicates magic + physical + true damage)
-#   - kda/kill_participation, which are derived stats better computed from the
-#     kept kills/deaths/assists columns downstream
+# The columns of the final dataset. Not everything extract_snapshots
+# computes is kept: identifiers/strings that don't help a model, values
+# already implied by other kept columns (all_runes, cs, hp_pct/power_pct,
+# total_damage_done(_to_champions)), and kda/kill_participation, which are
+# derived stats better computed from kills/deaths/assists downstream.
 
 GLOBAL_FIELDS = (
     "match_id", "timestamp_sec", "game_duration_sec", "team_100_win", "patch",
@@ -1076,9 +1052,8 @@ def process_bracket(bracket_name, global_processed, engine):
     print(f"\n=== Tier: {bracket_name} ===")
     pool_cache = OUTPUT_DIR / f"{bracket_name}_puuid_pool.json"
     processed_path = OUTPUT_DIR / f"{bracket_name}_processed_matches.json"
-    # Tracks which puuids we've already pulled recent-match-ids for, so a
-    # rerun (or the next batch in this same run) doesn't waste API calls
-    # re-querying a puuid whose most-recent-N games we've already seen.
+    # Tracks which puuids we've already pulled match ids for, so a rerun
+    # doesn't waste API calls re-querying the same puuid.
     queried_path = OUTPUT_DIR / f"{bracket_name}_queried_puuids.json"
 
     processed = set(json.loads(processed_path.read_text())) if processed_path.exists() else set()
@@ -1113,12 +1088,8 @@ def process_bracket(bracket_name, global_processed, engine):
         buffered_rows = []
         buffered_match_ids = []
 
-    # Loop over successive batches of not-yet-queried puuids -- growing the
-    # pool itself once every puuid in it has been queried -- until the
-    # bracket hits its target or the bracket's whole ranked population runs
-    # dry. A single batch reliably falls short of TARGET_GAMES_PER_BRACKET
-    # once candidates get discarded for being off-patch, too short, etc, so
-    # this can no longer be a one-shot pull.
+    # Loop over batches of not-yet-queried puuids, growing the pool once
+    # it's exhausted, until the bracket hits its target or runs dry.
     while len(processed) + len(buffered_match_ids) < TARGET_GAMES_PER_BRACKET:
         unqueried = [p for p in pool if p not in queried]
 
@@ -1149,10 +1120,7 @@ def process_bracket(bracket_name, global_processed, engine):
                 continue
             try:
                 # Check the cheap fields on `match` (queue, patch, duration)
-                # before paying for a `get_timeline` call -- a match that
-                # gets discarded on any of these never needed its timeline,
-                # so checking match-only fields first roughly halves wasted
-                # API calls on rejected candidates.
+                # before paying for a `get_timeline` call.
                 match = get_match(match_id)
                 if not match:
                     continue
@@ -1196,37 +1164,5 @@ def main():
     print("\nAll brackets complete.")
 
 
-class Tee:
-    """Mirrors writes to every stream it wraps (e.g. the real console plus
-    a log file), so redirecting sys.stdout/sys.stderr through one of these
-    logs a full run without touching any of the print() calls above."""
-
-    def __init__(self, *streams):
-        self.streams = streams
-
-    def write(self, data):
-        for stream in self.streams:
-            stream.write(data)
-            stream.flush()
-
-    def flush(self):
-        for stream in self.streams:
-            stream.flush()
-
-
 if __name__ == "__main__":
-    LOG_DIR.mkdir(parents=True, exist_ok=True)
-    log_path = LOG_DIR / f"collect_data_run_{datetime.now():%Y%m%d_%H%M%S}.log"
-
-    real_stdout, real_stderr = sys.stdout, sys.stderr
-
-    with open(log_path, "w", encoding="utf-8") as log_f:
-        sys.stdout = Tee(real_stdout, log_f)
-        sys.stderr = Tee(real_stderr, log_f)
-
-        try:
-            print(f"Logging full run output to: {log_path}")
-            main()
-        finally:
-            sys.stdout = real_stdout
-            sys.stderr = real_stderr
+    run_with_file_logging(LOG_DIR, "collect_data", main)
