@@ -19,9 +19,6 @@ from db import get_engine, MATCH_SNAPSHOTS_TABLE
 
 
 def show_chart(fig, **kwargs):
-    """st.plotly_chart wrapper that disables click-and-drag zoom/pan on
-    every chart in the app, so dragging on a plot never fights with the
-    page's own scrolling."""
     fig.update_layout(dragmode=False)
     kwargs.setdefault("width", "stretch")
     st.plotly_chart(fig, **kwargs)
@@ -49,14 +46,11 @@ ABLATION_RANK_FILE = Path("results/ablation_rank_breakdown.csv")
 
 OBJECTIVES = ["dragons", "heralds", "barons", "elders"]
 
-# Riot's ranked tiers, low to high, matching collect_data.py's ten skill
-# brackets -- used only to order the rank-breakdown chart's x-axis.
 RANK_ORDER = [
     "IRON", "BRONZE", "SILVER", "GOLD", "PLATINUM",
     "EMERALD", "DIAMOND", "MASTER", "GRANDMASTER", "CHALLENGER",
 ]
 
-# A gap whose 95% CI includes zero is drawn faded/hollow. Mirrors ablation_plotter.py.
 SIGNIFICANT_ALPHA = 1.0
 NOT_SIGNIFICANT_ALPHA = 0.35
 
@@ -436,7 +430,6 @@ def render_custom_scenario_tab():
         row = build_feature_vector(feature_names, inputs)
         X_row = row.to_frame().T[feature_names]
 
-        # Older model files predate median-imputation; fall back to the raw row.
         imputer = logreg.get("imputer")
         if imputer is not None:
             X_row = pd.DataFrame(imputer.transform(X_row), columns=feature_names)
@@ -570,8 +563,6 @@ def render_rank_breakdown():
     subset = rank_df[rank_df["ablation"] == chosen]
     ranks = order_ranks(subset["rank"].unique())
 
-    # Distinct symbol + dash per model on top of color, since the gaps
-    # compared are often within a couple thousandths of AUC of each other.
     MODEL_SYMBOLS = {"XGBoost": "circle", "LogisticRegression": "square"}
     MODEL_DASH = {"XGBoost": "solid", "LogisticRegression": "dash"}
 
@@ -694,8 +685,6 @@ def render_calibration_and_importance():
         imp_df = load_csv_if_exists(LOGREG_FEATURE_IMPORTANCE_CSV)
         if imp_df is not None:
             top = imp_df.sort_values("abs_coefficient", ascending=False).head(top_n).iloc[::-1]
-            # Not MODEL_COLORS["XGBoost"]: this is logistic regression's own
-            # chart, so it gets its own positive/negative color pair.
             colors = ["#2ca02c" if c >= 0 else "#d62728" for c in top["coefficient"]]
             fig = go.Figure(go.Bar(x=top["coefficient"], y=top["feature"], orientation="h", marker_color=colors))
             fig.update_layout(height=max(400, 22 * len(top)), margin=dict(l=220))
@@ -721,8 +710,6 @@ def render_minute_bucket_comparison():
 
     combined = xgb_bucket_df.merge(logreg_bucket_df, on="minutes", how="outer")
 
-    # merge(how="outer") sorts the join key lexically, scrambling minute
-    # order, so put the buckets back in chronological order.
     bucket_labels = [f"{start}-{end}" for start, end in MINUTE_BUCKETS]
     combined = combined.set_index("minutes").reindex(bucket_labels).reset_index()
 
