@@ -1,3 +1,5 @@
+import sys
+from datetime import datetime
 from pathlib import Path
 
 import pandas as pd
@@ -8,6 +10,8 @@ from db import get_engine, MATCH_SNAPSHOTS_TABLE
 
 
 OUTPUT_FILE = Path("xgb_engineered/xgb_clean_dataset.parquet")
+
+LOG_DIR = Path("logs")
 
 # Stats that keep a team-level diff alongside their per-role diffs, even
 # though the team-level column is exactly the sum of the five role columns.
@@ -277,5 +281,37 @@ def main():
     print("Done.")
 
 
+class Tee:
+    """Mirrors writes to every stream it wraps (e.g. the real console plus
+    a log file), so redirecting sys.stdout/sys.stderr through one of these
+    logs a full run without touching any of the print() calls above."""
+
+    def __init__(self, *streams):
+        self.streams = streams
+
+    def write(self, data):
+        for stream in self.streams:
+            stream.write(data)
+            stream.flush()
+
+    def flush(self):
+        for stream in self.streams:
+            stream.flush()
+
+
 if __name__ == "__main__":
-    main()
+    LOG_DIR.mkdir(parents=True, exist_ok=True)
+    log_path = LOG_DIR / f"xgboost_engineering_run_{datetime.now():%Y%m%d_%H%M%S}.log"
+
+    real_stdout, real_stderr = sys.stdout, sys.stderr
+
+    with open(log_path, "w", encoding="utf-8") as log_f:
+        sys.stdout = Tee(real_stdout, log_f)
+        sys.stderr = Tee(real_stderr, log_f)
+
+        try:
+            print(f"Logging full run output to: {log_path}")
+            main()
+        finally:
+            sys.stdout = real_stdout
+            sys.stderr = real_stderr

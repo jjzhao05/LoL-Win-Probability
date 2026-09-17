@@ -1,10 +1,12 @@
+import sys
+from datetime import datetime
 from pathlib import Path
 
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 
-from common import RANDOM_STATE, TEAMS, TOWER_PARTS
+from common import MODEL_COLORS, RANDOM_STATE, TEAMS, TOWER_PARTS
 from db import get_engine, MATCH_SNAPSHOTS_TABLE
 
 
@@ -12,6 +14,8 @@ XGB_PREDICTIONS_FILE = Path("results/xgb_predictions.parquet")
 LOGREG_PREDICTIONS_FILE = Path("results/logreg_predictions.parquet")
 
 OUTPUT_DIR = Path("figures/xgb_vs_logreg_labeled_plots")
+
+LOG_DIR = Path("logs")
 
 N_MATCHES = 30
 
@@ -73,7 +77,15 @@ def load_full_data():
         raise ValueError(f"Missing full-data columns: {sorted(missing)}")
 
     df["match_id"] = df["match_id"].astype(str)
-    df["minute"] = (df["timestamp_sec"] / 60).round().astype(int)
+
+    # Assigning "minute" as a plain df["minute"] = ... column insert onto a
+    # DataFrame this wide (read straight from the match_snapshots table)
+    # triggers pandas' "DataFrame is highly fragmented" PerformanceWarning,
+    # since the block manager built by read_sql_table already has many
+    # single-column blocks. A pd.concat rebuilds it as one contiguous block
+    # instead of inserting piecemeal.
+    minute = (df["timestamp_sec"] / 60).round().astype(int).rename("minute")
+    df = pd.concat([df, minute], axis=1)
 
     return df.sort_values(["match_id", "timestamp_sec"])
 
@@ -224,10 +236,14 @@ def annotate_events(ax, events):
             color=line_color,
         )
 
-        ax.text(
-            minute,
-            text_y,
+        # xytext is a fixed pixel offset (not data units), so the label sits
+        # just left of its event line by the same visual amount regardless
+        # of how many minutes the x-axis spans for a given match.
+        ax.annotate(
             label,
+            xy=(minute, text_y),
+            xytext=(-4, 0),
+            textcoords="offset points",
             rotation=90,
             fontsize=8,
             ha="center",
@@ -256,7 +272,7 @@ def plot_match(match_df, full_df, match_id):
         xgb_probs,
         linewidth=2,
         label="XGBoost",
-        color="blue",
+        color=MODEL_COLORS["XGBoost"],
     )
 
     ax.plot(
@@ -265,7 +281,7 @@ def plot_match(match_df, full_df, match_id):
         linewidth=2,
         linestyle="--",
         label="Logistic Regression",
-        color="orange",
+        color=MODEL_COLORS["LogisticRegression"],
     )
 
     ax.fill_between(
@@ -275,7 +291,7 @@ def plot_match(match_df, full_df, match_id):
         where=xgb_probs >= 0.5,
         alpha=0.20,
         interpolate=True,
-        color="blue",
+        color=MODEL_COLORS["XGBoost"],
     )
 
     ax.fill_between(
@@ -374,5 +390,37 @@ def main():
         plot_match(merged, full_df, match_id)
 
 
+class Tee:
+    """Mirrors writes to every stream it wraps (e.g. the real console plus
+    a log file), so redirecting sys.stdout/sys.stderr through one of these
+    logs a full run without touching any of the print() calls above."""
+
+    def __init__(self, *streams):
+        self.streams = streams
+
+    def write(self, data):
+        for stream in self.streams:
+            stream.write(data)
+            stream.flush()
+
+    def flush(self):
+        for stream in self.streams:
+            stream.flush()
+
+
 if __name__ == "__main__":
-    main()
+    LOG_DIR.mkdir(parents=True, exist_ok=True)
+    log_path = LOG_DIR / f"probability_plot_run_{datetime.now():%Y%m%d_%H%M%S}.log"
+
+    real_stdout, real_stderr = sys.stdout, sys.stderr
+
+    with open(log_path, "w", encoding="utf-8") as log_f:
+        sys.stdout = Tee(real_stdout, log_f)
+        sys.stderr = Tee(real_stderr, log_f)
+
+        try:
+            print(f"Logging full run output to: {log_path}")
+            main()
+        finally:
+            sys.stdout = real_stdout
+            sys.stderr = real_stderr

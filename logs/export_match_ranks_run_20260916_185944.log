@@ -1,0 +1,18 @@
+Logging full run output to: logs\export_match_ranks_run_20260916_185944.log
+Reading distinct (match_id, rank) pairs from: match_snapshots
+Matches: 9596
+Rank counts:
+rank
+DIAMOND        1000
+PLATINUM       1000
+IRON           1000
+GRANDMASTER    1000
+MASTER         1000
+SILVER         1000
+EMERALD        1000
+GOLD           1000
+BRONZE         1000
+CHALLENGER      596
+Name: count, dtype: int64
+
+Saved: results\match_ranks.csv

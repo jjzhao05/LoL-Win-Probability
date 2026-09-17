@@ -1,4 +1,6 @@
 import json
+import sys
+from datetime import datetime
 from pathlib import Path
 
 import pandas as pd
@@ -14,6 +16,8 @@ BASE_DIR = Path(__file__).resolve().parent
 DATA_DIR = BASE_DIR / "data"
 LOOKUP_DIR = BASE_DIR / "lol_data"
 OUTPUT_DIR = DATA_DIR
+
+LOG_DIR = BASE_DIR / "logs"
 
 
 def _load_map(filename: str) -> dict:
@@ -76,6 +80,16 @@ def load_dataset() -> pd.DataFrame:
     return raw_df
 
 
+def print_section(title, df, head=None, leading_blank=True):
+    if leading_blank:
+        print()
+
+    print("=" * 60)
+    print(title)
+    print("=" * 60)
+    print((df.head(head) if head else df).to_string(index=False))
+
+
 def win_rate_when(df, cond_100_has_it, cond_200_has_it):
     only_100 = cond_100_has_it & ~cond_200_has_it
     only_200 = cond_200_has_it & ~cond_100_has_it
@@ -91,21 +105,35 @@ def win_rate_when(df, cond_100_has_it, cond_200_has_it):
     return round((wins_100 + wins_200) / total, 4), int(total)
 
 
-ROLE_GOLD_DIFF_COLS = [f"{role}_gold_diff" for role in ROLES]
+# The raw match_snapshots table has no pre-computed diff columns (those are
+# built later, in xgboost_engineering.py) and no aggregate tower/kill
+# columns either -- it only has per-role, per-team totals and per-tower-part
+# destroyed flags. So every diff used here is derived straight from the
+# columns collect_data.py actually writes.
+LANE_TOWER_PARTS = [f"{lane}_{tier}" for lane in ("top", "mid", "bot") for tier in ("outer", "inner", "base")]
+NEXUS_TOWER_PARTS = ["nexus_tower_1", "nexus_tower_2"]
+ALL_TOWER_PARTS = LANE_TOWER_PARTS + NEXUS_TOWER_PARTS
 
 
 def feature_correlations(raw_df):
-    gold_diff = raw_df[ROLE_GOLD_DIFF_COLS].sum(axis=1)
-    tower_diff = raw_df["towers_100"] - raw_df["towers_200"]
+    gold_diff = sum(
+        raw_df[f"{role}_100_total_gold"] - raw_df[f"{role}_200_total_gold"] for role in ROLES
+    )
+    kill_diff = sum(
+        raw_df[f"{role}_100_kills"] - raw_df[f"{role}_200_kills"] for role in ROLES
+    )
+    towers_100 = sum(raw_df[f"{part}_100_destroyed"] for part in ALL_TOWER_PARTS)
+    towers_200 = sum(raw_df[f"{part}_200_destroyed"] for part in ALL_TOWER_PARTS)
+    tower_diff = towers_100 - towers_200
     elder_diff = raw_df["elders_100"] - raw_df["elders_200"]
 
     candidates = {
-        "kill_diff": raw_df["kill_diff"],
-        "dragon_diff": raw_df["dragon_diff"],
-        "herald_diff": raw_df["herald_diff"],
-        "baron_diff": raw_df["baron_diff"],
+        "kill_diff": kill_diff,
+        "dragon_diff": raw_df["dragons_100"] - raw_df["dragons_200"],
+        "herald_diff": raw_df["heralds_100"] - raw_df["heralds_200"],
+        "baron_diff": raw_df["barons_100"] - raw_df["barons_200"],
         "elder_diff": elder_diff,
-        "plate_diff": raw_df["plate_diff"],
+        "plate_diff": raw_df["plates_100"] - raw_df["plates_200"],
         "tower_diff": tower_diff,
     }
 
@@ -417,70 +445,17 @@ def main():
     patch_stats["team_100_win_rate"] = patch_stats["team_100_win_rate"].round(4)
     patch_stats.to_csv(OUTPUT_DIR / "patch_stats.csv", index=False)
 
-    print("=" * 60)
-    print("OVERALL SUMMARY STATS")
-    print("=" * 60)
-    print(summary_df.to_string(index=False))
-
-    print()
-    print("=" * 60)
-    print("DOES SECURING AN OBJECTIVE ACTUALLY WIN YOU THE GAME?")
-    print("=" * 60)
-    print(objective_impact.to_string(index=False))
-
-    print()
-    print("=" * 60)
-    print("CORRELATION OF EACH FEATURE GROUP WITH GOLD DIFFERENCE")
-    print("=" * 60)
-    print(corr_df.to_string(index=False))
-
-    print()
-    print("=" * 60)
-    print("NOTABLE GAMES")
-    print("=" * 60)
-    print(notable.to_string(index=False))
-
-    print()
-    print("=" * 60)
-    print("ROLE STATS")
-    print("=" * 60)
-    print(role_stats.to_string(index=False))
-
-    print()
-    print("=" * 60)
-    print("PATCH BREAKDOWN")
-    print("=" * 60)
-    print(patch_stats.to_string(index=False))
-
-    print()
-    print("=" * 60)
-    print("TOP 15 MOST PICKED CHAMPIONS")
-    print("=" * 60)
-    print(champ_stats.head(15).to_string(index=False))
-
-    print()
-    print("=" * 60)
-    print("TOP 15 MOST BANNED CHAMPIONS")
-    print("=" * 60)
-    print(ban_stats.head(15).to_string(index=False))
-
-    print()
-    print("=" * 60)
-    print("SUMMONER SPELL POPULARITY")
-    print("=" * 60)
-    print(spell_stats.to_string(index=False))
-
-    print()
-    print("=" * 60)
-    print("RUNE TREE STYLE POPULARITY")
-    print("=" * 60)
-    print(style_stats.to_string(index=False))
-
-    print()
-    print("=" * 60)
-    print("TOP 10 KEYSTONE RUNES")
-    print("=" * 60)
-    print(keystone_stats.head(10).to_string(index=False))
+    print_section("OVERALL SUMMARY STATS", summary_df, leading_blank=False)
+    print_section("DOES SECURING AN OBJECTIVE ACTUALLY WIN YOU THE GAME?", objective_impact)
+    print_section("CORRELATION OF EACH FEATURE GROUP WITH GOLD DIFFERENCE", corr_df)
+    print_section("NOTABLE GAMES", notable)
+    print_section("ROLE STATS", role_stats)
+    print_section("PATCH BREAKDOWN", patch_stats)
+    print_section("TOP 15 MOST PICKED CHAMPIONS", champ_stats, head=15)
+    print_section("TOP 15 MOST BANNED CHAMPIONS", ban_stats, head=15)
+    print_section("SUMMONER SPELL POPULARITY", spell_stats)
+    print_section("RUNE TREE STYLE POPULARITY", style_stats)
+    print_section("TOP 10 KEYSTONE RUNES", keystone_stats, head=10)
 
     print()
     print("Saved files to:")
@@ -493,5 +468,37 @@ def main():
     )
 
 
+class Tee:
+    """Mirrors writes to every stream it wraps (e.g. the real console plus
+    a log file), so redirecting sys.stdout/sys.stderr through one of these
+    logs a full run without touching any of the print() calls above."""
+
+    def __init__(self, *streams):
+        self.streams = streams
+
+    def write(self, data):
+        for stream in self.streams:
+            stream.write(data)
+            stream.flush()
+
+    def flush(self):
+        for stream in self.streams:
+            stream.flush()
+
+
 if __name__ == "__main__":
-    main()
+    LOG_DIR.mkdir(parents=True, exist_ok=True)
+    log_path = LOG_DIR / f"summary_stats_run_{datetime.now():%Y%m%d_%H%M%S}.log"
+
+    real_stdout, real_stderr = sys.stdout, sys.stderr
+
+    with open(log_path, "w", encoding="utf-8") as log_f:
+        sys.stdout = Tee(real_stdout, log_f)
+        sys.stderr = Tee(real_stderr, log_f)
+
+        try:
+            print(f"Logging full run output to: {log_path}")
+            main()
+        finally:
+            sys.stdout = real_stdout
+            sys.stderr = real_stderr

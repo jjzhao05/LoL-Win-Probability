@@ -9,6 +9,7 @@ import xgboost as xgb
 
 from common import (
     MINUTE_BUCKETS,
+    MODEL_COLORS,
     TEAMS,
     TOWER_PARTS,
     evaluate_by_minute_bucket,
@@ -35,8 +36,28 @@ RUN_TIMES_FILE = Path("results/run_times.csv")
 ABLATION_RESULTS_FILE = Path("results/ablation_results.csv")
 ABLATION_BOOTSTRAP_FILE = Path("results/ablation_bootstrap_cis.csv")
 ABLATION_CLOSENESS_FILE = Path("results/ablation_closeness_breakdown.csv")
+ABLATION_RANK_FILE = Path("results/ablation_rank_breakdown.csv")
 
 OBJECTIVES = ["dragons", "heralds", "barons", "elders"]
+
+# Riot's ranked tiers, low to high, matching collect_data.py's ten skill
+# brackets -- used only to order the rank-breakdown chart's x-axis.
+RANK_ORDER = [
+    "IRON", "BRONZE", "SILVER", "GOLD", "PLATINUM",
+    "EMERALD", "DIAMOND", "MASTER", "GRANDMASTER", "CHALLENGER",
+]
+
+# A gap whose 95% CI includes zero isn't distinguishable from no effect at
+# this sample size -- drawn faded/hollow so a noise-level wiggle doesn't
+# read the same as a real difference. Mirrors ablation_plotter.py.
+SIGNIFICANT_ALPHA = 1.0
+NOT_SIGNIFICANT_ALPHA = 0.35
+
+
+def order_ranks(ranks):
+    known = [r for r in RANK_ORDER if r in ranks]
+    unknown = sorted(r for r in ranks if r not in RANK_ORDER)
+    return known + unknown
 
 
 @st.cache_data
@@ -195,12 +216,12 @@ def render_real_match_tab():
     fig = go.Figure()
     fig.add_trace(go.Scatter(
         x=g["minute"], y=g["pred_prob_team_100_win"],
-        mode="lines", name="XGBoost", line=dict(color="royalblue", width=3),
+        mode="lines", name="XGBoost", line=dict(color=MODEL_COLORS["XGBoost"], width=3),
         hovertemplate="minute %{x}<br>XGBoost: %{y:.1%}<extra></extra>",
     ))
     fig.add_trace(go.Scatter(
         x=g["minute"], y=g["logreg_prob_team_100_win"],
-        mode="lines", name="Logistic Regression", line=dict(color="orange", width=3, dash="dash"),
+        mode="lines", name="Logistic Regression", line=dict(color=MODEL_COLORS["LogisticRegression"], width=3, dash="dash"),
         hovertemplate="minute %{x}<br>Logistic Regression: %{y:.1%}<extra></extra>",
     ))
     fig.add_hline(y=0.5, line_color="black", line_width=1)
@@ -311,14 +332,14 @@ def build_feature_vector(feature_names, inputs):
     return row
 
 
-def render_gauge(prob_blue, title):
+def render_gauge(prob_blue, title, bar_color=None):
     fig = go.Figure(go.Indicator(
         mode="gauge+number",
         value=prob_blue * 100,
         number={"suffix": "%"},
         gauge={
             "axis": {"range": [0, 100]},
-            "bar": {"color": "royalblue"},
+            "bar": {"color": bar_color or MODEL_COLORS["XGBoost"]},
             "steps": [
                 {"range": [0, 50], "color": "#fde0e0"},
                 {"range": [50, 100], "color": "#dbe7fb"},
@@ -398,7 +419,7 @@ def render_custom_scenario_tab():
         with m1:
             st.subheader("XGBoost")
             st.metric("Blue win probability", f"{prob_blue_xgb:.1%}")
-            st.plotly_chart(render_gauge(prob_blue_xgb, "XGBoost"), width="stretch")
+            st.plotly_chart(render_gauge(prob_blue_xgb, "XGBoost", MODEL_COLORS["XGBoost"]), width="stretch")
     else:
         with m1:
             st.warning("`xgb_model.json` not found. Run `xgboost_train.py` first.")
@@ -406,12 +427,21 @@ def render_custom_scenario_tab():
     if logreg is not None:
         feature_names = list(logreg["scaler"].feature_names_in_)
         row = build_feature_vector(feature_names, inputs)
-        scaled = logreg["scaler"].transform(row.to_frame().T[feature_names])
+        X_row = row.to_frame().T[feature_names]
+
+        # Older model files saved before the median-imputation fix won't
+        # have this key -- fall back to the raw (slider-built, so already
+        # NaN-free) row in that case.
+        imputer = logreg.get("imputer")
+        if imputer is not None:
+            X_row = pd.DataFrame(imputer.transform(X_row), columns=feature_names)
+
+        scaled = logreg["scaler"].transform(X_row)
         prob_blue_logreg = float(logreg["model"].predict_proba(scaled)[0, 1])
         with m2:
             st.subheader("Logistic Regression")
             st.metric("Blue win probability", f"{prob_blue_logreg:.1%}")
-            st.plotly_chart(render_gauge(prob_blue_logreg, "Logistic Regression"), width="stretch")
+            st.plotly_chart(render_gauge(prob_blue_logreg, "Logistic Regression", MODEL_COLORS["LogisticRegression"]), width="stretch")
     else:
         with m2:
             st.warning("`logreg_model.joblib` not found. Run `logistic_regression_train.py` first.")
@@ -430,6 +460,21 @@ def render_explore_game():
         render_custom_scenario_tab()
 
 
+ABLATION_VARIANT_LABELS = {
+    "full": "Full features",
+    "no_economy": "No gold/XP/level",
+    "no_objectives": "No objectives/towers",
+    "no_structures": "No towers/plates",
+    "no_epic_monsters": "No dragons/heralds/barons/elders",
+    "only_economy": "Only gold/XP/level",
+    "only_objectives": "Only objectives/towers",
+    "only_structures": "Only towers/plates",
+    "only_epic_monsters": "Only dragons/heralds/barons/elders",
+    "team_level_only": "Team-level features only",
+    "role_level_only": "Role-level features only",
+}
+
+
 def render_ablation_headline():
     st.subheader("Does the win-probability signal come from gold, or objectives?")
     results = load_csv_if_exists(ABLATION_RESULTS_FILE)
@@ -439,39 +484,153 @@ def render_ablation_headline():
         st.info("Run `ablation.py` to generate `ablation_results.csv`.")
         return
 
-    fig = go.Figure()
     variant_order = ["full", "no_economy", "no_objectives", "no_structures", "no_epic_monsters"]
-    variant_labels = {
-        "full": "Full features",
-        "no_economy": "No gold/XP/level",
-        "no_objectives": "No objectives/towers",
-        "no_structures": "No towers/plates",
-        "no_epic_monsters": "No dragons/heralds/barons/elders",
-    }
+    bootstrap_by_key = (
+        {(r["model"], r["ablation"]): r for _, r in bootstrap.iterrows()} if bootstrap is not None else {}
+    )
+
+    fig = go.Figure()
     for model_name, group in results.groupby("model"):
         group = group.set_index("variant").reindex(variant_order)
+        alphas = []
+        for v in variant_order:
+            b = bootstrap_by_key.get((model_name, v))
+            significant = v == "full" or b is None or not (b["ci_low"] <= 0 <= b["ci_high"])
+            alphas.append(SIGNIFICANT_ALPHA if significant else NOT_SIGNIFICANT_ALPHA)
         fig.add_trace(go.Bar(
-            x=[variant_labels[v] for v in variant_order],
+            x=[ABLATION_VARIANT_LABELS[v] for v in variant_order],
             y=group["auc"],
             name=model_name,
+            marker=dict(color=MODEL_COLORS.get(model_name), opacity=alphas),
         ))
     fig.update_layout(
         barmode="group", yaxis_title="Test AUC", yaxis=dict(range=[0.5, 1.0]),
+        title="Dropping one feature group at a time (faded = not distinguishable from full model at 95% CI)",
         height=420,
     )
     st.plotly_chart(fig, width="stretch")
 
+    only_variant_order = ["only_economy", "only_objectives", "only_structures", "only_epic_monsters"]
+    if set(only_variant_order) & set(results["variant"].unique()):
+        st.markdown("**How well does each feature group predict on its own?**")
+        fig2 = go.Figure()
+        for model_name, group in results.groupby("model"):
+            group = group.set_index("variant").reindex(only_variant_order)
+            fig2.add_trace(go.Bar(
+                x=[ABLATION_VARIANT_LABELS[v] for v in only_variant_order],
+                y=group["auc"],
+                name=model_name,
+                marker_color=MODEL_COLORS.get(model_name),
+            ))
+        fig2.update_layout(
+            barmode="group", yaxis_title="Test AUC", yaxis=dict(range=[0.5, 1.0]), height=380,
+        )
+        st.plotly_chart(fig2, width="stretch")
+
     if bootstrap is not None:
-        st.markdown("**Match-level bootstrap AUC gap from removing each feature group (95% CI):**")
+        st.markdown("**Match-level bootstrap AUC gap from each ablation vs. the full model (95% CI):**")
         display = bootstrap.copy()
-        display["ablation"] = display["ablation"].map(variant_labels).fillna(display["ablation"])
+        display["ablation"] = display["ablation"].map(ABLATION_VARIANT_LABELS).fillna(display["ablation"])
         display["95% CI"] = display.apply(lambda r: f"[{r['ci_low']:.4f}, {r['ci_high']:.4f}]", axis=1)
         st.dataframe(
             display[["model", "ablation", "mean_gap", "95% CI", "n_boot"]].rename(
-                columns={"model": "Model", "ablation": "Removed", "mean_gap": "Mean AUC gap", "n_boot": "Bootstrap draws"}
+                columns={"model": "Model", "ablation": "Variant", "mean_gap": "Mean AUC gap", "n_boot": "Bootstrap draws"}
             ),
             width="stretch",
         )
+
+
+def render_collinearity_breakdown():
+    st.subheader("Is per-lane (role-level) detail worth keeping, given team totals?")
+    st.caption(
+        "`team_level_only` keeps just the five team-total diffs; `role_level_only` keeps the "
+        "per-lane breakout instead (which sums back to those same totals). A gap near zero means "
+        "the redundant copy isn't adding real signal on top of the other."
+    )
+    bootstrap = load_csv_if_exists(ABLATION_BOOTSTRAP_FILE)
+    if bootstrap is None:
+        st.info("Run `ablation.py` to generate `ablation_bootstrap_cis.csv`.")
+        return
+
+    variants = ("team_level_only", "role_level_only")
+    subset = bootstrap[bootstrap["ablation"].isin(variants)]
+    if subset.empty:
+        st.info("No `team_level_only`/`role_level_only` rows found in `ablation_bootstrap_cis.csv`.")
+        return
+
+    fig = go.Figure()
+    for model_name, group in subset.groupby("model"):
+        group = group.set_index("ablation").reindex(variants)
+        not_sig = (group["ci_low"] <= 0) & (0 <= group["ci_high"])
+        alphas = [NOT_SIGNIFICANT_ALPHA if ns else SIGNIFICANT_ALPHA for ns in not_sig]
+        err_low = (group["mean_gap"] - group["ci_low"]).clip(lower=0)
+        err_high = (group["ci_high"] - group["mean_gap"]).clip(lower=0)
+        fig.add_trace(go.Bar(
+            x=[ABLATION_VARIANT_LABELS[v] for v in variants],
+            y=group["mean_gap"],
+            name=model_name,
+            marker=dict(color=MODEL_COLORS.get(model_name), opacity=alphas),
+            error_y=dict(type="data", array=err_high, arrayminus=err_low, visible=True),
+        ))
+    fig.add_hline(y=0, line_color="black", line_width=1)
+    fig.update_layout(
+        barmode="group", yaxis_title="AUC gap from full features",
+        title="Faded = 95% CI includes zero",
+        height=380,
+    )
+    st.plotly_chart(fig, width="stretch")
+
+
+def render_rank_breakdown():
+    st.subheader("Does objective control matter more at some ranks than others?")
+    rank_df = load_csv_if_exists(ABLATION_RANK_FILE)
+    if rank_df is None:
+        st.info("Run `ablation.py` to generate `ablation_rank_breakdown.csv`.")
+        return
+
+    available = [v for v in ("no_objectives", "only_objectives") if v in rank_df["ablation"].unique()]
+    if not available:
+        st.info("No recognized ablation labels found in `ablation_rank_breakdown.csv`.")
+        return
+
+    chosen = st.radio(
+        "Variant",
+        available,
+        format_func=lambda v: ABLATION_VARIANT_LABELS.get(v, v),
+        horizontal=True,
+        key="rank_breakdown_variant",
+    )
+    subset = rank_df[rank_df["ablation"] == chosen]
+    ranks = order_ranks(subset["rank"].unique())
+
+    fig = go.Figure()
+    for model_name, group in subset.groupby("model"):
+        group = group.set_index("rank").reindex(ranks)
+        not_sig = (group["ci_low"] <= 0) & (0 <= group["ci_high"])
+        color = MODEL_COLORS.get(model_name)
+
+        fig.add_trace(go.Scatter(
+            x=ranks, y=group["auc_gap"], mode="lines", name=model_name,
+            line=dict(color=color, width=1.5), opacity=0.6, showlegend=False, hoverinfo="skip",
+        ))
+        marker_opacity = [NOT_SIGNIFICANT_ALPHA if ns else SIGNIFICANT_ALPHA for ns in not_sig]
+        fig.add_trace(go.Scatter(
+            x=ranks, y=group["auc_gap"], mode="markers", name=model_name,
+            marker=dict(color=color, size=9, opacity=marker_opacity),
+            hovertemplate="%{x}<br>AUC gap: %{y:.4f}<extra>" + model_name + "</extra>",
+        ))
+
+    fig.add_hline(y=0, line_color="black", line_width=1)
+    fig.update_layout(
+        xaxis_title="Rank",
+        yaxis_title=f"AUC gap from removing {ABLATION_VARIANT_LABELS.get(chosen, chosen).lower()}"
+        if chosen.startswith("no_") else f"AUC gap ({ABLATION_VARIANT_LABELS.get(chosen, chosen).lower()})",
+        title="Faded points: 95% CI includes zero",
+        height=420,
+    )
+    st.plotly_chart(fig, width="stretch")
+    with st.expander("Full rank breakdown table"):
+        st.dataframe(subset, width="stretch")
 
 
 CLOSENESS_ABLATION_LABELS = {
@@ -507,7 +666,7 @@ def render_closeness_breakdown():
         fig.add_trace(go.Bar(x=bucket_order, y=group["auc_gap"], name=model_name))
     fig.update_layout(
         barmode="group",
-        xaxis_title="Game closeness (terciles of |gold diff|)",
+        xaxis_title="Game closeness (close <2.5k, medium 2.5k-7.5k, blowout >7.5k gold)",
         yaxis_title=f"AUC gap from removing {CLOSENESS_ABLATION_LABELS[chosen]}",
         height=380,
     )
@@ -541,7 +700,7 @@ def render_calibration_and_importance():
         imp_df = load_csv_if_exists(XGB_FEATURE_IMPORTANCE_CSV)
         if imp_df is not None:
             top = imp_df.sort_values("gain", ascending=False).head(top_n).iloc[::-1]
-            fig = go.Figure(go.Bar(x=top["gain"], y=top["feature"], orientation="h"))
+            fig = go.Figure(go.Bar(x=top["gain"], y=top["feature"], orientation="h", marker_color=MODEL_COLORS["XGBoost"]))
             fig.update_layout(height=max(400, 22 * len(top)), margin=dict(l=220))
             st.plotly_chart(fig, width="stretch")
         else:
@@ -551,7 +710,11 @@ def render_calibration_and_importance():
         imp_df = load_csv_if_exists(LOGREG_FEATURE_IMPORTANCE_CSV)
         if imp_df is not None:
             top = imp_df.sort_values("abs_coefficient", ascending=False).head(top_n).iloc[::-1]
-            colors = ["#1f77b4" if c >= 0 else "#d62728" for c in top["coefficient"]]
+            # Sign color here is deliberately not MODEL_COLORS["XGBoost"] -- this
+            # panel is logistic regression's own chart, and reusing the other
+            # model's identity color for "positive coefficient" would blur the
+            # two meanings together.
+            colors = ["#2ca02c" if c >= 0 else "#d62728" for c in top["coefficient"]]
             fig = go.Figure(go.Bar(x=top["coefficient"], y=top["feature"], orientation="h", marker_color=colors))
             fig.update_layout(height=max(400, 22 * len(top)), margin=dict(l=220))
             st.plotly_chart(fig, width="stretch")
@@ -619,6 +782,10 @@ def render_findings():
     render_ablation_headline()
     st.divider()
     render_closeness_breakdown()
+    st.divider()
+    render_rank_breakdown()
+    st.divider()
+    render_collinearity_breakdown()
     st.divider()
     render_calibration_and_importance()
     st.divider()

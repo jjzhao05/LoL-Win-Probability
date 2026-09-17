@@ -1,9 +1,11 @@
 import os
 import json
+import sys
 import time
 import random
 import threading
 from collections import deque
+from datetime import datetime
 from pathlib import Path
 
 import requests
@@ -13,6 +15,16 @@ from dotenv import load_dotenv
 from db import get_engine, MATCH_SNAPSHOTS_TABLE
 
 load_dotenv()
+
+LOG_DIR = Path("logs")
+
+
+# Same value as common.RANDOM_STATE, kept as a local constant since this
+# script doesn't otherwise import common.py. Seeds the puuid-pool shuffles
+# below so which puuids get queried (and in what order) is reproducible
+# across runs.
+RANDOM_STATE = 101705
+random.seed(RANDOM_STATE)
 
 
 API_KEY = os.getenv("RIOT_API_KEY", "").strip()
@@ -32,11 +44,20 @@ TARGET_GAMES_PER_BRACKET = 1000
 
 MATCHES_PER_PLAYER = 5
 
-TARGET_PATCH = "14.18"
+TARGET_PATCH = "16.17"
 
 MIN_GAME_DURATION_SEC = 900
 
 MATCH_CHUNK_SIZE = 25
+
+# How many not-yet-queried puuids to pull match ids from per batch, and how
+# much to grow a bracket's puuid pool by once every pool puuid has been
+# queried. A single batch of raw candidate ids reliably falls short of
+# TARGET_GAMES_PER_BRACKET once games get discarded for being off-patch,
+# too short, wrong queue, etc, so process_bracket loops over batches (and
+# grows the pool) instead of doing one batch and stopping.
+QUERIED_BATCH_SIZE = 200
+POOL_GROWTH_STEP = 400
 
 RATE_LIMITS = [
     (20, 1),
@@ -236,12 +257,18 @@ def get_timeline(match_id):
     return riot_get(url)
 
 
-def collect_match_ids(bracket_name, puuid_pool, target_games, processed_ids, global_seen):
+def collect_match_ids(bracket_name, puuid_batch, processed_ids, global_seen):
+    """Pull recent ranked match ids for one batch of puuids.
+
+    Unlike the old version, this doesn't stop early once some target count
+    of candidates is reached -- it always queries every puuid in the batch,
+    since the caller (process_bracket) is the one responsible for deciding
+    when enough matches have actually been collected and for pulling
+    another batch if not.
+    """
     match_ids = []
     seen = set(processed_ids) | set(global_seen)
-    for puuid in puuid_pool:
-        if len(match_ids) + len(processed_ids) >= target_games:
-            break
+    for puuid in puuid_batch:
         try:
             ids = get_ranked_match_ids(puuid, MATCHES_PER_PLAYER)
         except RuntimeError as e:
@@ -251,7 +278,7 @@ def collect_match_ids(bracket_name, puuid_pool, target_games, processed_ids, glo
             if mid not in seen:
                 seen.add(mid)
                 match_ids.append(mid)
-    print(f"[{bracket_name}] collected {len(match_ids)} new candidate match ids")
+    print(f"[{bracket_name}] collected {len(match_ids)} new candidate match ids from {len(puuid_batch)} puuids")
     return match_ids
 
 
@@ -1049,8 +1076,13 @@ def process_bracket(bracket_name, global_processed, engine):
     print(f"\n=== Tier: {bracket_name} ===")
     pool_cache = OUTPUT_DIR / f"{bracket_name}_puuid_pool.json"
     processed_path = OUTPUT_DIR / f"{bracket_name}_processed_matches.json"
+    # Tracks which puuids we've already pulled recent-match-ids for, so a
+    # rerun (or the next batch in this same run) doesn't waste API calls
+    # re-querying a puuid whose most-recent-N games we've already seen.
+    queried_path = OUTPUT_DIR / f"{bracket_name}_queried_puuids.json"
 
     processed = set(json.loads(processed_path.read_text())) if processed_path.exists() else set()
+    queried = set(json.loads(queried_path.read_text())) if queried_path.exists() else set()
     print(f"[{bracket_name}] already processed: {len(processed)} matches")
 
     if len(processed) >= TARGET_GAMES_PER_BRACKET:
@@ -1059,11 +1091,6 @@ def process_bracket(bracket_name, global_processed, engine):
 
     pool_target = max(TARGET_GAMES_PER_BRACKET * 2 // MATCHES_PER_PLAYER, 200)
     pool = collect_puuid_pool(bracket_name, pool_target, pool_cache)
-    random.shuffle(pool)
-
-    candidate_ids = collect_match_ids(
-        bracket_name, pool, TARGET_GAMES_PER_BRACKET, processed, global_processed
-    )
 
     buffered_rows = []
     buffered_match_ids = []
@@ -1086,37 +1113,73 @@ def process_bracket(bracket_name, global_processed, engine):
         buffered_rows = []
         buffered_match_ids = []
 
-    for match_id in candidate_ids:
-        if len(processed) + len(buffered_match_ids) >= TARGET_GAMES_PER_BRACKET:
-            break
-        if match_id in global_processed or match_id in processed or match_id in buffered_match_ids:
-            continue
-        try:
-            match = get_match(match_id)
-            timeline = get_timeline(match_id)
-            if not match or not timeline:
+    # Loop over successive batches of not-yet-queried puuids -- growing the
+    # pool itself once every puuid in it has been queried -- until the
+    # bracket hits its target or the bracket's whole ranked population runs
+    # dry. A single batch reliably falls short of TARGET_GAMES_PER_BRACKET
+    # once candidates get discarded for being off-patch, too short, etc, so
+    # this can no longer be a one-shot pull.
+    while len(processed) + len(buffered_match_ids) < TARGET_GAMES_PER_BRACKET:
+        unqueried = [p for p in pool if p not in queried]
+
+        if not unqueried:
+            new_pool_target = len(pool) + POOL_GROWTH_STEP
+            print(f"[{bracket_name}] pool exhausted, growing to {new_pool_target} puuids...")
+            pool = collect_puuid_pool(bracket_name, new_pool_target, pool_cache)
+            unqueried = [p for p in pool if p not in queried]
+            if not unqueried:
+                print(
+                    f"[{bracket_name}] no more puuids available in this bracket, "
+                    f"stopping short at {len(processed)}/{TARGET_GAMES_PER_BRACKET}."
+                )
+                break
+
+        random.shuffle(unqueried)
+        batch = unqueried[:QUERIED_BATCH_SIZE]
+
+        candidate_ids = collect_match_ids(bracket_name, batch, processed, global_processed)
+
+        queried.update(batch)
+        queried_path.write_text(json.dumps(list(queried)))
+
+        for match_id in candidate_ids:
+            if len(processed) + len(buffered_match_ids) >= TARGET_GAMES_PER_BRACKET:
+                break
+            if match_id in global_processed or match_id in processed or match_id in buffered_match_ids:
                 continue
-            if match["info"].get("queueId") != QUEUE_ID:
+            try:
+                # Check the cheap fields on `match` (queue, patch, duration)
+                # before paying for a `get_timeline` call -- a match that
+                # gets discarded on any of these never needed its timeline,
+                # so checking match-only fields first roughly halves wasted
+                # API calls on rejected candidates.
+                match = get_match(match_id)
+                if not match:
+                    continue
+                if match["info"].get("queueId") != QUEUE_ID:
+                    continue
+                game_version = match["info"].get("gameVersion", "")
+                patch = ".".join(game_version.split(".")[:2])
+                if patch != TARGET_PATCH:
+                    continue
+                game_duration_sec = match["info"].get("gameDuration", 0)
+                if game_duration_sec >= 100000:
+                    game_duration_sec = game_duration_sec // 1000
+                if game_duration_sec < MIN_GAME_DURATION_SEC:
+                    continue
+                timeline = get_timeline(match_id)
+                if not timeline:
+                    continue
+                rows = extract_snapshots(match, timeline)
+                if not rows:
+                    continue
+                buffered_rows.extend(rows)
+                buffered_match_ids.append(match_id)
+                if len(buffered_match_ids) >= MATCH_CHUNK_SIZE:
+                    flush_buffer()
+            except RuntimeError as e:
+                print(f"  warning: skipping {match_id}: {e}")
                 continue
-            game_version = match["info"].get("gameVersion", "")
-            patch = ".".join(game_version.split(".")[:2])
-            if patch != TARGET_PATCH:
-                continue
-            game_duration_sec = match["info"].get("gameDuration", 0)
-            if game_duration_sec >= 100000:
-                game_duration_sec = game_duration_sec // 1000
-            if game_duration_sec < MIN_GAME_DURATION_SEC:
-                continue
-            rows = extract_snapshots(match, timeline)
-            if not rows:
-                continue
-            buffered_rows.extend(rows)
-            buffered_match_ids.append(match_id)
-            if len(buffered_match_ids) >= MATCH_CHUNK_SIZE:
-                flush_buffer()
-        except RuntimeError as e:
-            print(f"  warning: skipping {match_id}: {e}")
-            continue
 
     flush_buffer()
 
@@ -1133,5 +1196,37 @@ def main():
     print("\nAll brackets complete.")
 
 
+class Tee:
+    """Mirrors writes to every stream it wraps (e.g. the real console plus
+    a log file), so redirecting sys.stdout/sys.stderr through one of these
+    logs a full run without touching any of the print() calls above."""
+
+    def __init__(self, *streams):
+        self.streams = streams
+
+    def write(self, data):
+        for stream in self.streams:
+            stream.write(data)
+            stream.flush()
+
+    def flush(self):
+        for stream in self.streams:
+            stream.flush()
+
+
 if __name__ == "__main__":
-    main()
+    LOG_DIR.mkdir(parents=True, exist_ok=True)
+    log_path = LOG_DIR / f"collect_data_run_{datetime.now():%Y%m%d_%H%M%S}.log"
+
+    real_stdout, real_stderr = sys.stdout, sys.stderr
+
+    with open(log_path, "w", encoding="utf-8") as log_f:
+        sys.stdout = Tee(real_stdout, log_f)
+        sys.stderr = Tee(real_stderr, log_f)
+
+        try:
+            print(f"Logging full run output to: {log_path}")
+            main()
+        finally:
+            sys.stdout = real_stdout
+            sys.stderr = real_stderr

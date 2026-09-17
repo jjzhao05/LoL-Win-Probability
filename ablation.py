@@ -1,17 +1,22 @@
 import csv
+import sys
+from datetime import datetime
 from pathlib import Path
 
 import numpy as np
 import pandas as pd
 import xgboost as xgb
 
+from sklearn.impute import SimpleImputer
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import roc_auc_score
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
 
 from common import (
+    BASIC_STATS,
     RANDOM_STATE,
+    ROLES,
     SPLIT_FILE,
     VAL_SIZE,
     compute_metrics,
@@ -27,14 +32,55 @@ OBJECTIVE_KEYWORDS = ["dragon", "herald", "baron", "elder", "plate", "tower", "d
 STRUCTURE_KEYWORDS = ["tower", "destroyed", "plate"]
 EPIC_MONSTER_KEYWORDS = ["dragon", "herald", "baron", "elder"]
 
+# Mirrors xgboost_engineering.TEAM_LEVEL_STATS -- the six basic stats that
+# get both a team-level diff and five per-role diffs, so team_{stat}_diff
+# is an exact sum of the five role_{stat}_diff columns (see common.py's
+# note on PER_ROLE_BREAKOUT about that exact linear dependency). Duplicated
+# here instead of imported so this script stays independent of
+# xgboost_engineering's db.py/Postgres import chain -- it only ever touches
+# the already-materialized parquet + split files.
+TEAM_LEVEL_STATS = {"total_gold", "xp", "minions_killed", "kills", "assists", "deaths"}
+
+ROLE_LEVEL_STAT_COLS = {f"{role}_{stat}_diff" for role in ROLES for stat in BASIC_STATS}
+TEAM_LEVEL_STAT_COLS = {f"team_{stat}_diff" for stat in TEAM_LEVEL_STATS}
+
 XGB_INPUT_FILE = Path("xgb_engineered/xgb_clean_dataset.parquet")
+
+# Written by export_match_ranks.py. Reading it from disk here (rather than
+# querying Postgres directly) keeps this script working against just the
+# already-materialized parquet/split/CSV files, same as XGB_INPUT_FILE and
+# SPLIT_FILE below.
+MATCH_RANKS_FILE = Path("results/match_ranks.csv")
 
 RESULTS_FILE = Path("results/ablation_results.csv")
 BOOTSTRAP_RESULTS_FILE = Path("results/ablation_bootstrap_cis.csv")
 CLOSENESS_RESULTS_FILE = Path("results/ablation_closeness_breakdown.csv")
+RANK_RESULTS_FILE = Path("results/ablation_rank_breakdown.csv")
+
+LOG_DIR = Path("logs")
 
 CLOSENESS_FEATURE = "team_total_gold_diff"
 CLOSENESS_BUCKET_LABELS = ["close", "medium", "blowout"]
+
+# Fixed gold-lead thresholds rather than terciles: a game is "close" under
+# 2500 gold, "medium" from 2500 up to 7500, and a "blowout" above that,
+# regardless of how the rest of the dataset happens to be distributed. This
+# keeps a bucket's meaning fixed (a 2000 gold lead is always "close") instead
+# of shifting with whatever games happen to be in the sample.
+CLOSENESS_BINS = [0, 2500, 7500, np.inf]
+
+# Riot's ranked tiers, low to high, matching collect_data.py's ten skill
+# brackets. Only used to order printed/saved rows -- any rank value present
+# in the data but missing from this list is still included, just sorted
+# after the ones that are in it.
+RANK_ORDER = [
+    "IRON", "BRONZE", "SILVER", "GOLD", "PLATINUM",
+    "EMERALD", "DIAMOND", "MASTER", "GRANDMASTER", "CHALLENGER",
+]
+
+# Below this many rows, an AUC gap for a given rank/variant is too noisy to
+# report on its own (also skipped outright if only one class is present).
+MIN_ROWS_FOR_RANK_AUC = 200
 
 N_BOOTSTRAP = 2000
 
@@ -44,7 +90,12 @@ XGB_MAX_ESTIMATORS = 600
 XGB_EARLY_STOPPING_ROUNDS = 30
 
 LOGREG_CONFIG = {"C": 1.0}
-LOGREG_PENALTY = "l2"
+# sklearn >=1.8 deprecates the `penalty` argument in favor of `l1_ratio`
+# (l1_ratio=0 == old penalty="l2", l1_ratio=1 == old penalty="l1"; see the
+# FutureWarning sklearn raises otherwise) -- LOGREG_L1_RATIO=0 keeps the
+# same L2/ridge behavior this project has always used, just spelled the
+# way that stays valid once `penalty` is actually removed in 1.10.
+LOGREG_L1_RATIO = 0
 LOGREG_MAX_ITER = 1000
 
 
@@ -68,12 +119,47 @@ def is_epic_monster_col(name):
     return any(kw in lname for kw in EPIC_MONSTER_KEYWORDS)
 
 
+def _strip_delta_suffix(name):
+    suffix = "_delta_3min"
+    return name[: -len(suffix)] if name.endswith(suffix) else name
+
+
+def is_role_level_stat_col(name):
+    """True for a per-role basic-stat diff column (e.g. top_total_gold_diff)
+    or its 3-minute delta -- the columns duplicated by TEAM_LEVEL_STAT_COLS,
+    per the exact team_{stat}_diff = sum(role_{stat}_diff) dependency noted
+    in common.py."""
+    return _strip_delta_suffix(name) in ROLE_LEVEL_STAT_COLS
+
+
+def is_team_level_stat_col(name):
+    """True for one of the six team-level basic-stat diff columns that are
+    an exact sum of their five per-role counterparts, or its 3-minute
+    delta."""
+    return _strip_delta_suffix(name) in TEAM_LEVEL_STAT_COLS
+
+
+def _keep_only(predicate):
+    """Invert a 'drop these' predicate into a 'drop everything except
+    these (+ minute)' predicate, for the only_X variants below. `minute`
+    is kept in every only_X variant (as it already is in every no_X
+    variant, since it matches none of the keyword lists) so all variants
+    share the same minimal timing context and stay comparable."""
+    return lambda name: not (predicate(name) or name == "minute")
+
+
 VARIANTS = {
     "full": lambda name: False,
     "no_economy": is_economy_col,
     "no_objectives": is_objective_col,
     "no_structures": is_structure_col,
     "no_epic_monsters": is_epic_monster_col,
+    "only_economy": _keep_only(is_economy_col),
+    "only_objectives": _keep_only(is_objective_col),
+    "only_structures": _keep_only(is_structure_col),
+    "only_epic_monsters": _keep_only(is_epic_monster_col),
+    "team_level_only": is_role_level_stat_col,
+    "role_level_only": is_team_level_stat_col,
 }
 
 ABLATION_DROP_LABELS = {
@@ -83,7 +169,41 @@ ABLATION_DROP_LABELS = {
     "no_epic_monsters": "dragons/heralds/barons/elders",
 }
 
-CLOSENESS_VARIANTS = ("no_objectives", "no_structures")
+# "only_X" variants keep just that feature group (+ minute) and drop
+# everything else -- the inverse of ABLATION_DROP_LABELS. Where "no_X"
+# answers "how much do we lose by removing this group", "only_X" answers
+# "how much of the full model's AUC can this group alone recover".
+ONLY_KEEP_LABELS = {
+    "only_economy": "gold/XP/level",
+    "only_objectives": "objectives/towers",
+    "only_structures": "towers/plates",
+    "only_epic_monsters": "dragons/heralds/barons/elders",
+}
+
+# team_level_only / role_level_only test the exact collinearity
+# common.py flags for PER_ROLE_BREAKOUT: team_{stat}_diff (for the six
+# TEAM_LEVEL_STATS) is an exact sum of its five role_{stat}_diff columns.
+# "team_level_only" drops the five per-role duplicates and keeps the team
+# sums; "role_level_only" drops the six team-level sums and keeps the
+# per-role breakdown. Everything else (objectives, towers, damage, the
+# other five basic stats that only exist at role level, ...) is untouched
+# in both, so any AUC difference here is specifically about whether that
+# redundant pair is worth keeping both halves of.
+COLLINEARITY_DROP_LABELS = {
+    "team_level_only": "the five per-role gold/xp/minions/kills/assists/deaths diffs (keeping the team-level sums)",
+    "role_level_only": "the six team-level gold/xp/minions/kills/assists/deaths diffs (keeping the five per-role columns)",
+}
+
+CLOSENESS_VARIANTS = (
+    "no_objectives", "no_structures",
+    "only_objectives", "only_economy",
+)
+
+# n_boot for the per-bucket/per-rank bootstrap CIs below. Lower than
+# N_BOOTSTRAP since each slice already has far fewer matches than the full
+# test set, so the resampling distribution stabilizes with fewer draws --
+# keeps the extra CI computation from meaningfully slowing this script down.
+N_BOOTSTRAP_SLICE = 1000
 
 
 def load_split(match_ids):
@@ -97,6 +217,25 @@ def load_split(match_ids):
 
     data = np.load(SPLIT_FILE, allow_pickle=True)
     return data["train_ids"].astype(str), data["test_ids"].astype(str)
+
+
+def load_match_ranks():
+    if not MATCH_RANKS_FILE.exists():
+        raise FileNotFoundError(
+            f"Missing {MATCH_RANKS_FILE}. Run export_match_ranks.py first so "
+            "the rank breakdown below doesn't need a live database connection."
+        )
+
+    df = pd.read_csv(MATCH_RANKS_FILE, dtype=str)
+    df["rank"] = df["rank"].str.strip().str.upper()
+
+    return df
+
+
+def order_ranks(ranks):
+    known = [r for r in RANK_ORDER if r in ranks]
+    unknown = sorted(r for r in ranks if r not in RANK_ORDER)
+    return known + unknown
 
 
 def get_xy(df, drop_cols):
@@ -160,11 +299,21 @@ def fit_xgb(X_fit, y_fit, X_val, y_val, X_test):
 
 
 def fit_logreg(X_fit, y_fit, X_val, y_val, X_test):
+    # Per-role diff columns are NaN on rows where collect_data.py couldn't
+    # resolve one of the five roles for a match (see
+    # logistic_regression_train.py for the full explanation). XGBoost
+    # handles that natively; LogisticRegression doesn't, so impute with the
+    # training-set median first. X_val is unused by this fitter (no grid
+    # search here, so no validation split needed) and isn't imputed.
+    imputer = SimpleImputer(strategy="median")
+    X_fit = imputer.fit_transform(X_fit)
+    X_test = imputer.transform(X_test)
+
     scaler = StandardScaler()
     scaler.fit(X_fit)
 
     model = LogisticRegression(
-        penalty=LOGREG_PENALTY,
+        l1_ratio=LOGREG_L1_RATIO,
         C=LOGREG_CONFIG["C"],
         max_iter=LOGREG_MAX_ITER,
         random_state=RANDOM_STATE,
@@ -247,12 +396,12 @@ def bootstrap_auc_gap(merged, prob_col_full, prob_col_ablated, target_col="targe
 
 
 def closeness_breakdown(merged, prob_col_full, prob_col_ablated, ablation_label, target_col="target",
-                         closeness_col="abs_gold_diff", labels=CLOSENESS_BUCKET_LABELS):
+                         closeness_col="abs_gold_diff", labels=CLOSENESS_BUCKET_LABELS, bins=CLOSENESS_BINS):
     merged = merged.dropna(subset=[closeness_col]).copy()
     if merged.empty:
         return []
 
-    merged["closeness_bucket"] = pd.qcut(merged[closeness_col], q=len(labels), labels=labels, duplicates="drop")
+    merged["closeness_bucket"] = pd.cut(merged[closeness_col], bins=bins, labels=labels, right=False)
 
     rows = []
     for label in labels:
@@ -265,6 +414,14 @@ def closeness_breakdown(merged, prob_col_full, prob_col_ablated, ablation_label,
         auc_full = roc_auc_score(y, g[prob_col_full].to_numpy())
         auc_ablated = roc_auc_score(y, g[prob_col_ablated].to_numpy())
 
+        # Match-level bootstrap CI on this bucket's own gap, not just the
+        # whole-dataset one -- a bucket is a fraction of the full test set,
+        # so its point-estimate gap needs its own uncertainty band. Without
+        # this, a bucket-to-bucket wiggle of a few thousandths of an AUC
+        # point (well within noise at this sample size) can look like a
+        # real pattern once it's drawn as a bar or a line.
+        ci = bootstrap_auc_gap(g, prob_col_full, prob_col_ablated, target_col=target_col, n_boot=N_BOOTSTRAP_SLICE)
+
         rows.append({
             "ablation": ablation_label,
             "bucket": label,
@@ -274,6 +431,48 @@ def closeness_breakdown(merged, prob_col_full, prob_col_ablated, ablation_label,
             "auc_ablated": round(float(auc_ablated), 4),
             "auc_gap": round(float(auc_full - auc_ablated), 4),
             "auc_retained_pct": round(float(auc_ablated / auc_full), 4) if auc_full else float("nan"),
+            "ci_low": round(ci["ci_low"], 4),
+            "ci_high": round(ci["ci_high"], 4),
+            "n_boot": ci["n_boot"],
+        })
+
+    return rows
+
+
+def rank_breakdown(merged, prob_col_full, prob_col_ablated, ablation_label, target_col="target",
+                    rank_col="rank", min_rows=MIN_ROWS_FOR_RANK_AUC):
+    merged = merged.dropna(subset=[rank_col]).copy()
+    if merged.empty:
+        return []
+
+    rows = []
+    for rank in order_ranks(merged[rank_col].unique()):
+        g = merged[merged[rank_col] == rank]
+        y = g[target_col].to_numpy()
+
+        if len(g) < min_rows or len(np.unique(y)) < 2:
+            continue
+
+        auc_full = roc_auc_score(y, g[prob_col_full].to_numpy())
+        auc_ablated = roc_auc_score(y, g[prob_col_ablated].to_numpy())
+
+        # See the matching comment in closeness_breakdown -- each rank
+        # tier is a small slice (a few hundred matches), so its own gap
+        # needs its own CI rather than borrowing the whole-dataset one.
+        ci = bootstrap_auc_gap(g, prob_col_full, prob_col_ablated, target_col=target_col, n_boot=N_BOOTSTRAP_SLICE)
+
+        rows.append({
+            "ablation": ablation_label,
+            "rank": rank,
+            "rows": len(g),
+            "matches": int(g["match_id"].nunique()),
+            "auc_full": round(float(auc_full), 4),
+            "auc_ablated": round(float(auc_ablated), 4),
+            "auc_gap": round(float(auc_full - auc_ablated), 4),
+            "auc_retained_pct": round(float(auc_ablated / auc_full), 4) if auc_full else float("nan"),
+            "ci_low": round(ci["ci_low"], 4),
+            "ci_high": round(ci["ci_high"], 4),
+            "n_boot": ci["n_boot"],
         })
 
     return rows
@@ -304,7 +503,7 @@ def save_dict_rows_csv(rows, path):
 
 def print_summary(results):
     print("\n" + "=" * 80)
-    print("ABLATION SUMMARY: full feature set vs. gold/XP/level removed vs. objectives removed")
+    print("ABLATION SUMMARY: full feature set vs. one group removed vs. only that group kept")
     print("=" * 80)
 
     by_model = {}
@@ -320,6 +519,7 @@ def print_summary(results):
         print(f"  Baseline accuracy (majority class): {full['baseline_accuracy']:.4f}")
         print(f"  Full features     ({full['n_features']:>3} feats): AUC={full['auc']:.4f}  log_loss={full['log_loss']:.4f}  accuracy={full['accuracy']:.4f}  brier={full['brier']:.4f}")
 
+        print("\n  -- remove one group --")
         for variant_key, drop_label in ABLATION_DROP_LABELS.items():
             ablated = variants.get(variant_key)
             if not ablated:
@@ -328,15 +528,69 @@ def print_summary(results):
             print(f"  {variant_key:<17} ({ablated['n_features']:>3} feats): AUC={ablated['auc']:.4f}  log_loss={ablated['log_loss']:.4f}  accuracy={ablated['accuracy']:.4f}  brier={ablated['brier']:.4f}")
             print(f"    AUC retained without {drop_label}: {ablated['auc'] / full['auc']:.1%}  (gap: {full['auc'] - ablated['auc']:.4f})")
 
+        print("\n  -- keep only one group (+ minute) --")
+        for variant_key, keep_label in ONLY_KEEP_LABELS.items():
+            only = variants.get(variant_key)
+            if not only:
+                continue
+
+            print(f"  {variant_key:<17} ({only['n_features']:>3} feats): AUC={only['auc']:.4f}  log_loss={only['log_loss']:.4f}  accuracy={only['accuracy']:.4f}  brier={only['brier']:.4f}")
+            print(f"    AUC achieved using only {keep_label}: {only['auc'] / full['auc']:.1%} of full  (gap: {full['auc'] - only['auc']:.4f})")
+
+        print("\n  -- collinearity: team-level vs. role-level gold/xp/minions/kills/assists/deaths --")
+        for variant_key, drop_label in COLLINEARITY_DROP_LABELS.items():
+            collin = variants.get(variant_key)
+            if not collin:
+                continue
+
+            print(f"  {variant_key:<17} ({collin['n_features']:>3} feats): AUC={collin['auc']:.4f}  log_loss={collin['log_loss']:.4f}  accuracy={collin['accuracy']:.4f}  brier={collin['brier']:.4f}")
+            print(f"    AUC retained without {drop_label}: {collin['auc'] / full['auc']:.1%}  (gap: {full['auc'] - collin['auc']:.4f})")
+
 
 def print_closeness_rows(model_name, variant_label, rows):
     print(f"\n{model_name} -- {variant_label} AUC gap by game closeness (|{CLOSENESS_FEATURE}|):")
     for row in rows:
+        not_sig = " (not distinguishable from zero)" if row["ci_low"] <= 0 <= row["ci_high"] else ""
         print(
             f"  {row['bucket']:<8} | rows: {row['rows']:>6} | median |gold diff|: {row['median_abs_gold_diff']:>8} "
             f"| auc_full: {row['auc_full']:.4f} | auc_ablated: {row['auc_ablated']:.4f} "
-            f"| gap: {row['auc_gap']:.4f} | retained: {row['auc_retained_pct']:.1%}"
+            f"| gap: {row['auc_gap']:.4f}  95% CI [{row['ci_low']:.4f}, {row['ci_high']:.4f}]{not_sig} "
+            f"| retained: {row['auc_retained_pct']:.1%}"
         )
+
+
+def print_rank_rows(model_name, variant_label, rows):
+    print(f"\n{model_name} -- {variant_label} AUC gap by rank:")
+    if not rows:
+        print("  (skipped: no rank had enough rows with both outcomes present)")
+        return
+
+    for row in rows:
+        not_sig = " (not distinguishable from zero)" if row["ci_low"] <= 0 <= row["ci_high"] else ""
+        print(
+            f"  {row['rank']:<12} | rows: {row['rows']:>6} | matches: {row['matches']:>5} "
+            f"| auc_full: {row['auc_full']:.4f} | auc_ablated: {row['auc_ablated']:.4f} "
+            f"| gap: {row['auc_gap']:.4f}  95% CI [{row['ci_low']:.4f}, {row['ci_high']:.4f}]{not_sig} "
+            f"| retained: {row['auc_retained_pct']:.1%}"
+        )
+
+
+class Tee:
+    """Mirrors writes to every stream it wraps (e.g. the real console plus
+    a log file), so redirecting sys.stdout/sys.stderr through one of these
+    logs a full run without touching any of the print() calls above."""
+
+    def __init__(self, *streams):
+        self.streams = streams
+
+    def write(self, data):
+        for stream in self.streams:
+            stream.write(data)
+            stream.flush()
+
+    def flush(self):
+        for stream in self.streams:
+            stream.flush()
 
 
 def main():
@@ -359,11 +613,16 @@ def main():
 
     bootstrap_rows = []
     closeness_rows = []
+    rank_rows = []
+
+    ranks_df = load_match_ranks()
+
+    all_variant_labels = {**ABLATION_DROP_LABELS, **ONLY_KEEP_LABELS, **COLLINEARITY_DROP_LABELS}
 
     for model_name in MODEL_FITTERS:
         full_pred = predictions[(model_name, "full")]
 
-        for variant_label, drop_label in ABLATION_DROP_LABELS.items():
+        for variant_label, group_label in all_variant_labels.items():
             ablated_pred = predictions[(model_name, variant_label)]
 
             merged = full_pred.merge(
@@ -373,8 +632,14 @@ def main():
             )
 
             ci = bootstrap_auc_gap(merged, "prob_full", "prob_ablated")
+
+            verb = (
+                f"AUC gap from keeping only {group_label}"
+                if variant_label.startswith("only_")
+                else f"AUC gap from removing {group_label}"
+            )
             print(
-                f"\n{model_name} -- AUC gap from removing {drop_label}: "
+                f"\n{model_name} -- {verb}: "
                 f"{ci['mean_gap']:.4f}  (95% CI [{ci['ci_low']:.4f}, {ci['ci_high']:.4f}], n_boot={ci['n_boot']})"
             )
             bootstrap_rows.append({"model": model_name, "ablation": variant_label, **ci})
@@ -384,12 +649,39 @@ def main():
                 print_closeness_rows(model_name, variant_label, rows)
                 closeness_rows.extend({"model": model_name, **row} for row in rows)
 
+                merged_with_rank = merged.merge(ranks_df, on="match_id", how="left")
+                rows = rank_breakdown(merged_with_rank, "prob_full", "prob_ablated", variant_label)
+                print_rank_rows(model_name, variant_label, rows)
+                rank_rows.extend({"model": model_name, **row} for row in rows)
+
     save_dict_rows_csv(bootstrap_rows, BOOTSTRAP_RESULTS_FILE)
     print("\nSaved:", BOOTSTRAP_RESULTS_FILE)
 
     save_dict_rows_csv(closeness_rows, CLOSENESS_RESULTS_FILE)
     print("Saved:", CLOSENESS_RESULTS_FILE)
 
+    save_dict_rows_csv(rank_rows, RANK_RESULTS_FILE)
+    print("Saved:", RANK_RESULTS_FILE)
+
+    print(
+        "\nRun ablation_plotter.py to generate figures from the CSVs just "
+        "written above."
+    )
+
 
 if __name__ == "__main__":
-    main()
+    LOG_DIR.mkdir(parents=True, exist_ok=True)
+    log_path = LOG_DIR / f"ablation_run_{datetime.now():%Y%m%d_%H%M%S}.log"
+
+    real_stdout, real_stderr = sys.stdout, sys.stderr
+
+    with open(log_path, "w", encoding="utf-8") as log_f:
+        sys.stdout = Tee(real_stdout, log_f)
+        sys.stderr = Tee(real_stderr, log_f)
+
+        try:
+            print(f"Logging full run output to: {log_path}")
+            main()
+        finally:
+            sys.stdout = real_stdout
+            sys.stderr = real_stderr

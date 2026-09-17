@@ -1,0 +1,735 @@
+Logging full run output to: logs\ablation_run_20260916_185950.log
+
+================================================================================
+XGBoost -- full
+================================================================================
+Features used: 155
+
+XGBoost test metrics (full)
+AUC: 0.8156
+Log loss: 0.5141
+Accuracy: 0.7228
+Brier score: 0.1743
+Rows: 59218
+
+Test metrics by minute bucket (full)
+1-5 | rows: 9600 | auc: 0.6281 | log_loss: 0.667 | accuracy: 0.5882 | brier: 0.2373
+6-10 | rows: 9600 | auc: 0.7323 | log_loss: 0.6041 | accuracy: 0.6635 | brier: 0.2089
+11-15 | rows: 9600 | auc: 0.8218 | log_loss: 0.5167 | accuracy: 0.7392 | brier: 0.1726
+16-20 | rows: 9060 | auc: 0.8613 | log_loss: 0.4621 | accuracy: 0.7719 | brier: 0.1523
+21-25 | rows: 8232 | auc: 0.9052 | log_loss: 0.3886 | accuracy: 0.8158 | brier: 0.1256
+26-30 | rows: 5937 | auc: 0.9086 | log_loss: 0.3822 | accuracy: 0.8267 | brier: 0.1224
+31-45 | rows: 4771 | auc: 0.8673 | log_loss: 0.4532 | accuracy: 0.7726 | brier: 0.1499
+
+================================================================================
+XGBoost -- no_economy
+================================================================================
+Features used: 121
+
+XGBoost test metrics (no_economy)
+AUC: 0.8073
+Log loss: 0.5239
+Accuracy: 0.7171
+Brier score: 0.1781
+Rows: 59218
+
+Test metrics by minute bucket (no_economy)
+1-5 | rows: 9600 | auc: 0.6302 | log_loss: 0.667 | accuracy: 0.5884 | brier: 0.2373
+6-10 | rows: 9600 | auc: 0.7283 | log_loss: 0.6066 | accuracy: 0.6623 | brier: 0.2101
+11-15 | rows: 9600 | auc: 0.815 | log_loss: 0.5232 | accuracy: 0.7339 | brier: 0.1757
+16-20 | rows: 9060 | auc: 0.8529 | log_loss: 0.4741 | accuracy: 0.765 | brier: 0.1568
+21-25 | rows: 8232 | auc: 0.8965 | log_loss: 0.4042 | accuracy: 0.8062 | brier: 0.1313
+26-30 | rows: 5937 | auc: 0.8979 | log_loss: 0.4022 | accuracy: 0.8142 | brier: 0.1297
+31-45 | rows: 4771 | auc: 0.8487 | log_loss: 0.4794 | accuracy: 0.7596 | brier: 0.1604
+
+================================================================================
+XGBoost -- no_objectives
+================================================================================
+Features used: 141
+
+XGBoost test metrics (no_objectives)
+AUC: 0.809
+Log loss: 0.5228
+Accuracy: 0.718
+Brier score: 0.1774
+Rows: 59218
+
+Test metrics by minute bucket (no_objectives)
+1-5 | rows: 9600 | auc: 0.6276 | log_loss: 0.6672 | accuracy: 0.5871 | brier: 0.2374
+6-10 | rows: 9600 | auc: 0.7299 | log_loss: 0.6055 | accuracy: 0.6575 | brier: 0.2096
+11-15 | rows: 9600 | auc: 0.8179 | log_loss: 0.5212 | accuracy: 0.7362 | brier: 0.1746
+16-20 | rows: 9060 | auc: 0.8543 | log_loss: 0.4727 | accuracy: 0.7685 | brier: 0.1561
+21-25 | rows: 8232 | auc: 0.8975 | log_loss: 0.4033 | accuracy: 0.8092 | brier: 0.1306
+26-30 | rows: 5937 | auc: 0.8997 | log_loss: 0.3995 | accuracy: 0.8181 | brier: 0.1286
+31-45 | rows: 4771 | auc: 0.8515 | log_loss: 0.4779 | accuracy: 0.7611 | brier: 0.1588
+
+================================================================================
+XGBoost -- no_structures
+================================================================================
+Features used: 149
+
+XGBoost test metrics (no_structures)
+AUC: 0.8157
+Log loss: 0.5143
+Accuracy: 0.7231
+Brier score: 0.1743
+Rows: 59218
+
+Test metrics by minute bucket (no_structures)
+1-5 | rows: 9600 | auc: 0.6286 | log_loss: 0.667 | accuracy: 0.5884 | brier: 0.2373
+6-10 | rows: 9600 | auc: 0.7325 | log_loss: 0.6042 | accuracy: 0.6634 | brier: 0.2089
+11-15 | rows: 9600 | auc: 0.8218 | log_loss: 0.517 | accuracy: 0.7395 | brier: 0.1727
+16-20 | rows: 9060 | auc: 0.8614 | log_loss: 0.4621 | accuracy: 0.7721 | brier: 0.1523
+21-25 | rows: 8232 | auc: 0.9055 | log_loss: 0.3884 | accuracy: 0.8168 | brier: 0.1254
+26-30 | rows: 5937 | auc: 0.9088 | log_loss: 0.3822 | accuracy: 0.8274 | brier: 0.1223
+31-45 | rows: 4771 | auc: 0.8665 | log_loss: 0.4544 | accuracy: 0.7722 | brier: 0.1501
+
+================================================================================
+XGBoost -- no_epic_monsters
+================================================================================
+Features used: 147
+
+XGBoost test metrics (no_epic_monsters)
+AUC: 0.8091
+Log loss: 0.5225
+Accuracy: 0.7174
+Brier score: 0.1773
+Rows: 59218
+
+Test metrics by minute bucket (no_epic_monsters)
+1-5 | rows: 9600 | auc: 0.6273 | log_loss: 0.6674 | accuracy: 0.5842 | brier: 0.2375
+6-10 | rows: 9600 | auc: 0.73 | log_loss: 0.6057 | accuracy: 0.6558 | brier: 0.2096
+11-15 | rows: 9600 | auc: 0.8178 | log_loss: 0.5219 | accuracy: 0.7362 | brier: 0.1747
+16-20 | rows: 9060 | auc: 0.8541 | log_loss: 0.4731 | accuracy: 0.7681 | brier: 0.1563
+21-25 | rows: 8232 | auc: 0.897 | log_loss: 0.404 | accuracy: 0.8096 | brier: 0.1309
+26-30 | rows: 5937 | auc: 0.8997 | log_loss: 0.3994 | accuracy: 0.8169 | brier: 0.1287
+31-45 | rows: 4771 | auc: 0.8545 | log_loss: 0.4723 | accuracy: 0.7642 | brier: 0.157
+
+================================================================================
+XGBoost -- only_economy
+================================================================================
+Features used: 35
+
+XGBoost test metrics (only_economy)
+AUC: 0.8087
+Log loss: 0.5225
+Accuracy: 0.7175
+Brier score: 0.1775
+Rows: 59218
+
+Test metrics by minute bucket (only_economy)
+1-5 | rows: 9600 | auc: 0.6253 | log_loss: 0.6678 | accuracy: 0.584 | brier: 0.2377
+6-10 | rows: 9600 | auc: 0.7306 | log_loss: 0.6051 | accuracy: 0.6596 | brier: 0.2094
+11-15 | rows: 9600 | auc: 0.8196 | log_loss: 0.5187 | accuracy: 0.7352 | brier: 0.1736
+16-20 | rows: 9060 | auc: 0.8544 | log_loss: 0.4728 | accuracy: 0.7682 | brier: 0.156
+21-25 | rows: 8232 | auc: 0.8958 | log_loss: 0.4048 | accuracy: 0.8083 | brier: 0.1316
+26-30 | rows: 5937 | auc: 0.8988 | log_loss: 0.3993 | accuracy: 0.8157 | brier: 0.1296
+31-45 | rows: 4771 | auc: 0.8521 | log_loss: 0.4781 | accuracy: 0.7634 | brier: 0.159
+
+================================================================================
+XGBoost -- only_objectives
+================================================================================
+Features used: 15
+
+XGBoost test metrics (only_objectives)
+AUC: 0.7657
+Log loss: 0.5671
+Accuracy: 0.678
+Brier score: 0.1945
+Rows: 59218
+
+Test metrics by minute bucket (only_objectives)
+1-5 | rows: 9600 | auc: 0.5206 | log_loss: 0.6913 | accuracy: 0.5116 | brier: 0.2491
+6-10 | rows: 9600 | auc: 0.6386 | log_loss: 0.663 | accuracy: 0.5932 | brier: 0.2353
+11-15 | rows: 9600 | auc: 0.7541 | log_loss: 0.5898 | accuracy: 0.6914 | brier: 0.202
+16-20 | rows: 9060 | auc: 0.8209 | log_loss: 0.5202 | accuracy: 0.7424 | brier: 0.1728
+21-25 | rows: 8232 | auc: 0.8734 | log_loss: 0.4453 | accuracy: 0.7867 | brier: 0.145
+26-30 | rows: 5937 | auc: 0.876 | log_loss: 0.4435 | accuracy: 0.7965 | brier: 0.1424
+31-45 | rows: 4771 | auc: 0.8348 | log_loss: 0.503 | accuracy: 0.7548 | brier: 0.1659
+
+================================================================================
+XGBoost -- only_structures
+================================================================================
+Features used: 7
+
+XGBoost test metrics (only_structures)
+AUC: 0.7264
+Log loss: 0.6021
+Accuracy: 0.6494
+Brier score: 0.2089
+Rows: 59218
+
+Test metrics by minute bucket (only_structures)
+1-5 | rows: 9600 | auc: 0.5184 | log_loss: 0.6913 | accuracy: 0.5116 | brier: 0.2491
+6-10 | rows: 9600 | auc: 0.6152 | log_loss: 0.6719 | accuracy: 0.5774 | brier: 0.2396
+11-15 | rows: 9600 | auc: 0.719 | log_loss: 0.6178 | accuracy: 0.658 | brier: 0.2145
+16-20 | rows: 9060 | auc: 0.7826 | log_loss: 0.5618 | accuracy: 0.7103 | brier: 0.1903
+21-25 | rows: 8232 | auc: 0.8236 | log_loss: 0.5147 | accuracy: 0.7425 | brier: 0.1717
+26-30 | rows: 5937 | auc: 0.8227 | log_loss: 0.5178 | accuracy: 0.7453 | brier: 0.1719
+31-45 | rows: 4771 | auc: 0.7797 | log_loss: 0.5663 | accuracy: 0.7045 | brier: 0.1918
+
+================================================================================
+XGBoost -- only_epic_monsters
+================================================================================
+Features used: 9
+
+XGBoost test metrics (only_epic_monsters)
+AUC: 0.7207
+Log loss: 0.6059
+Accuracy: 0.6448
+Brier score: 0.2106
+Rows: 59218
+
+Test metrics by minute bucket (only_epic_monsters)
+1-5 | rows: 9600 | auc: 0.5 | log_loss: 0.6933 | accuracy: 0.499 | brier: 0.2501
+6-10 | rows: 9600 | auc: 0.5845 | log_loss: 0.6819 | accuracy: 0.5556 | brier: 0.2444
+11-15 | rows: 9600 | auc: 0.6673 | log_loss: 0.6466 | accuracy: 0.6407 | brier: 0.2273
+16-20 | rows: 9060 | auc: 0.7691 | log_loss: 0.5763 | accuracy: 0.7038 | brier: 0.1958
+21-25 | rows: 8232 | auc: 0.8358 | log_loss: 0.5013 | accuracy: 0.7538 | brier: 0.1659
+26-30 | rows: 5937 | auc: 0.8427 | log_loss: 0.4914 | accuracy: 0.7601 | brier: 0.1617
+31-45 | rows: 4771 | auc: 0.7928 | log_loss: 0.5537 | accuracy: 0.724 | brier: 0.1865
+
+================================================================================
+XGBoost -- team_level_only
+================================================================================
+Features used: 45
+
+XGBoost test metrics (team_level_only)
+AUC: 0.8145
+Log loss: 0.516
+Accuracy: 0.7231
+Brier score: 0.1749
+Rows: 59218
+
+Test metrics by minute bucket (team_level_only)
+1-5 | rows: 9600 | auc: 0.627 | log_loss: 0.6677 | accuracy: 0.5848 | brier: 0.2377
+6-10 | rows: 9600 | auc: 0.7305 | log_loss: 0.6055 | accuracy: 0.6671 | brier: 0.2095
+11-15 | rows: 9600 | auc: 0.8212 | log_loss: 0.5168 | accuracy: 0.741 | brier: 0.1728
+16-20 | rows: 9060 | auc: 0.8595 | log_loss: 0.4645 | accuracy: 0.7684 | brier: 0.1532
+21-25 | rows: 8232 | auc: 0.9031 | log_loss: 0.3915 | accuracy: 0.8156 | brier: 0.1268
+26-30 | rows: 5937 | auc: 0.9055 | log_loss: 0.3878 | accuracy: 0.8236 | brier: 0.1244
+31-45 | rows: 4771 | auc: 0.8674 | log_loss: 0.4564 | accuracy: 0.7818 | brier: 0.1501
+
+================================================================================
+XGBoost -- role_level_only
+================================================================================
+Features used: 143
+
+XGBoost test metrics (role_level_only)
+AUC: 0.812
+Log loss: 0.5175
+Accuracy: 0.7193
+Brier score: 0.1757
+Rows: 59218
+
+Test metrics by minute bucket (role_level_only)
+1-5 | rows: 9600 | auc: 0.6286 | log_loss: 0.6668 | accuracy: 0.5857 | brier: 0.2372
+6-10 | rows: 9600 | auc: 0.7253 | log_loss: 0.6082 | accuracy: 0.6571 | brier: 0.2109
+11-15 | rows: 9600 | auc: 0.8156 | log_loss: 0.5208 | accuracy: 0.732 | brier: 0.1753
+16-20 | rows: 9060 | auc: 0.8578 | log_loss: 0.4664 | accuracy: 0.7694 | brier: 0.154
+21-25 | rows: 8232 | auc: 0.9006 | log_loss: 0.396 | accuracy: 0.8122 | brier: 0.1282
+26-30 | rows: 5937 | auc: 0.9052 | log_loss: 0.3891 | accuracy: 0.8275 | brier: 0.1245
+31-45 | rows: 4771 | auc: 0.8667 | log_loss: 0.452 | accuracy: 0.7699 | brier: 0.1494
+
+================================================================================
+LogisticRegression -- full
+================================================================================
+Features used: 155
+C:\Users\Jonathan Zhao\AppData\Local\Programs\Python\Python312\Lib\site-packages\sklearn\linear_model\_logistic.py:1184: FutureWarning: 'n_jobs' has no effect since 1.8 and will be removed in 1.10. You provided 'n_jobs=-1', please leave it unspecified.
+  warnings.warn(msg, category=FutureWarning)
+
+LogisticRegression test metrics (full)
+AUC: 0.8173
+Log loss: 0.5108
+Accuracy: 0.724
+Brier score: 0.1734
+Rows: 59218
+
+Test metrics by minute bucket (full)
+1-5 | rows: 9600 | auc: 0.623 | log_loss: 0.6687 | accuracy: 0.5835 | brier: 0.2381
+6-10 | rows: 9600 | auc: 0.7297 | log_loss: 0.6052 | accuracy: 0.6624 | brier: 0.2096
+11-15 | rows: 9600 | auc: 0.8225 | log_loss: 0.5138 | accuracy: 0.74 | brier: 0.1721
+16-20 | rows: 9060 | auc: 0.8625 | log_loss: 0.4596 | accuracy: 0.7715 | brier: 0.1515
+21-25 | rows: 8232 | auc: 0.9051 | log_loss: 0.3866 | accuracy: 0.8167 | brier: 0.1254
+26-30 | rows: 5937 | auc: 0.909 | log_loss: 0.3798 | accuracy: 0.8243 | brier: 0.1224
+31-45 | rows: 4771 | auc: 0.8814 | log_loss: 0.4309 | accuracy: 0.7935 | brier: 0.1415
+
+================================================================================
+LogisticRegression -- no_economy
+================================================================================
+Features used: 121
+C:\Users\Jonathan Zhao\AppData\Local\Programs\Python\Python312\Lib\site-packages\sklearn\linear_model\_logistic.py:1184: FutureWarning: 'n_jobs' has no effect since 1.8 and will be removed in 1.10. You provided 'n_jobs=-1', please leave it unspecified.
+  warnings.warn(msg, category=FutureWarning)
+
+LogisticRegression test metrics (no_economy)
+AUC: 0.8113
+Log loss: 0.5185
+Accuracy: 0.7203
+Brier score: 0.1762
+Rows: 59218
+
+Test metrics by minute bucket (no_economy)
+1-5 | rows: 9600 | auc: 0.6233 | log_loss: 0.6708 | accuracy: 0.5856 | brier: 0.2391
+6-10 | rows: 9600 | auc: 0.7239 | log_loss: 0.6107 | accuracy: 0.6594 | brier: 0.2118
+11-15 | rows: 9600 | auc: 0.8177 | log_loss: 0.5204 | accuracy: 0.7335 | brier: 0.1746
+16-20 | rows: 9060 | auc: 0.8573 | log_loss: 0.4673 | accuracy: 0.7674 | brier: 0.1546
+21-25 | rows: 8232 | auc: 0.8999 | log_loss: 0.3969 | accuracy: 0.8117 | brier: 0.1288
+26-30 | rows: 5937 | auc: 0.9025 | log_loss: 0.3931 | accuracy: 0.8213 | brier: 0.1268
+31-45 | rows: 4771 | auc: 0.8721 | log_loss: 0.4508 | accuracy: 0.7831 | brier: 0.1483
+
+================================================================================
+LogisticRegression -- no_objectives
+================================================================================
+Features used: 141
+C:\Users\Jonathan Zhao\AppData\Local\Programs\Python\Python312\Lib\site-packages\sklearn\linear_model\_logistic.py:1184: FutureWarning: 'n_jobs' has no effect since 1.8 and will be removed in 1.10. You provided 'n_jobs=-1', please leave it unspecified.
+  warnings.warn(msg, category=FutureWarning)
+
+LogisticRegression test metrics (no_objectives)
+AUC: 0.8114
+Log loss: 0.5189
+Accuracy: 0.7193
+Brier score: 0.1762
+Rows: 59218
+
+Test metrics by minute bucket (no_objectives)
+1-5 | rows: 9600 | auc: 0.6234 | log_loss: 0.6685 | accuracy: 0.5836 | brier: 0.238
+6-10 | rows: 9600 | auc: 0.7276 | log_loss: 0.6073 | accuracy: 0.6567 | brier: 0.2105
+11-15 | rows: 9600 | auc: 0.8178 | log_loss: 0.5197 | accuracy: 0.735 | brier: 0.1744
+16-20 | rows: 9060 | auc: 0.8553 | log_loss: 0.4702 | accuracy: 0.768 | brier: 0.1553
+21-25 | rows: 8232 | auc: 0.8984 | log_loss: 0.3998 | accuracy: 0.815 | brier: 0.1295
+26-30 | rows: 5937 | auc: 0.9002 | log_loss: 0.397 | accuracy: 0.8119 | brier: 0.1286
+31-45 | rows: 4771 | auc: 0.8699 | log_loss: 0.4496 | accuracy: 0.7829 | brier: 0.148
+
+================================================================================
+LogisticRegression -- no_structures
+================================================================================
+Features used: 149
+C:\Users\Jonathan Zhao\AppData\Local\Programs\Python\Python312\Lib\site-packages\sklearn\linear_model\_logistic.py:1184: FutureWarning: 'n_jobs' has no effect since 1.8 and will be removed in 1.10. You provided 'n_jobs=-1', please leave it unspecified.
+  warnings.warn(msg, category=FutureWarning)
+
+LogisticRegression test metrics (no_structures)
+AUC: 0.8173
+Log loss: 0.5109
+Accuracy: 0.7238
+Brier score: 0.1734
+Rows: 59218
+
+Test metrics by minute bucket (no_structures)
+1-5 | rows: 9600 | auc: 0.6231 | log_loss: 0.6687 | accuracy: 0.5824 | brier: 0.2381
+6-10 | rows: 9600 | auc: 0.7298 | log_loss: 0.6051 | accuracy: 0.6627 | brier: 0.2095
+11-15 | rows: 9600 | auc: 0.8226 | log_loss: 0.5138 | accuracy: 0.7404 | brier: 0.172
+16-20 | rows: 9060 | auc: 0.8628 | log_loss: 0.4589 | accuracy: 0.7713 | brier: 0.1514
+21-25 | rows: 8232 | auc: 0.9057 | log_loss: 0.3854 | accuracy: 0.8161 | brier: 0.125
+26-30 | rows: 5937 | auc: 0.9088 | log_loss: 0.3802 | accuracy: 0.8255 | brier: 0.1225
+31-45 | rows: 4771 | auc: 0.8787 | log_loss: 0.4347 | accuracy: 0.7912 | brier: 0.1428
+
+================================================================================
+LogisticRegression -- no_epic_monsters
+================================================================================
+Features used: 147
+C:\Users\Jonathan Zhao\AppData\Local\Programs\Python\Python312\Lib\site-packages\sklearn\linear_model\_logistic.py:1184: FutureWarning: 'n_jobs' has no effect since 1.8 and will be removed in 1.10. You provided 'n_jobs=-1', please leave it unspecified.
+  warnings.warn(msg, category=FutureWarning)
+
+LogisticRegression test metrics (no_epic_monsters)
+AUC: 0.8113
+Log loss: 0.5188
+Accuracy: 0.7198
+Brier score: 0.1762
+Rows: 59218
+
+Test metrics by minute bucket (no_epic_monsters)
+1-5 | rows: 9600 | auc: 0.623 | log_loss: 0.6685 | accuracy: 0.5842 | brier: 0.238
+6-10 | rows: 9600 | auc: 0.7274 | log_loss: 0.6075 | accuracy: 0.6566 | brier: 0.2105
+11-15 | rows: 9600 | auc: 0.8176 | log_loss: 0.5198 | accuracy: 0.7354 | brier: 0.1745
+16-20 | rows: 9060 | auc: 0.8551 | log_loss: 0.4709 | accuracy: 0.768 | brier: 0.1554
+21-25 | rows: 8232 | auc: 0.8978 | log_loss: 0.4008 | accuracy: 0.8144 | brier: 0.1298
+26-30 | rows: 5937 | auc: 0.9003 | log_loss: 0.3963 | accuracy: 0.8127 | brier: 0.1287
+31-45 | rows: 4771 | auc: 0.8728 | log_loss: 0.446 | accuracy: 0.7883 | brier: 0.1467
+
+================================================================================
+LogisticRegression -- only_economy
+================================================================================
+Features used: 35
+C:\Users\Jonathan Zhao\AppData\Local\Programs\Python\Python312\Lib\site-packages\sklearn\linear_model\_logistic.py:1184: FutureWarning: 'n_jobs' has no effect since 1.8 and will be removed in 1.10. You provided 'n_jobs=-1', please leave it unspecified.
+  warnings.warn(msg, category=FutureWarning)
+
+LogisticRegression test metrics (only_economy)
+AUC: 0.8083
+Log loss: 0.5223
+Accuracy: 0.7166
+Brier score: 0.1776
+Rows: 59218
+
+Test metrics by minute bucket (only_economy)
+1-5 | rows: 9600 | auc: 0.6234 | log_loss: 0.6695 | accuracy: 0.5826 | brier: 0.2385
+6-10 | rows: 9600 | auc: 0.7306 | log_loss: 0.6078 | accuracy: 0.6623 | brier: 0.2104
+11-15 | rows: 9600 | auc: 0.8185 | log_loss: 0.5201 | accuracy: 0.734 | brier: 0.1744
+16-20 | rows: 9060 | auc: 0.8542 | log_loss: 0.4716 | accuracy: 0.767 | brier: 0.1559
+21-25 | rows: 8232 | auc: 0.8966 | log_loss: 0.4024 | accuracy: 0.8072 | brier: 0.1311
+26-30 | rows: 5937 | auc: 0.8982 | log_loss: 0.4002 | accuracy: 0.8119 | brier: 0.13
+31-45 | rows: 4771 | auc: 0.8546 | log_loss: 0.4713 | accuracy: 0.7619 | brier: 0.1568
+
+================================================================================
+LogisticRegression -- only_objectives
+================================================================================
+Features used: 15
+C:\Users\Jonathan Zhao\AppData\Local\Programs\Python\Python312\Lib\site-packages\sklearn\linear_model\_logistic.py:1184: FutureWarning: 'n_jobs' has no effect since 1.8 and will be removed in 1.10. You provided 'n_jobs=-1', please leave it unspecified.
+  warnings.warn(msg, category=FutureWarning)
+
+LogisticRegression test metrics (only_objectives)
+AUC: 0.7685
+Log loss: 0.5632
+Accuracy: 0.6796
+Brier score: 0.1932
+Rows: 59218
+
+Test metrics by minute bucket (only_objectives)
+1-5 | rows: 9600 | auc: 0.5219 | log_loss: 0.6919 | accuracy: 0.5116 | brier: 0.2494
+6-10 | rows: 9600 | auc: 0.622 | log_loss: 0.6704 | accuracy: 0.5857 | brier: 0.2389
+11-15 | rows: 9600 | auc: 0.7482 | log_loss: 0.5975 | accuracy: 0.6791 | brier: 0.2054
+16-20 | rows: 9060 | auc: 0.8275 | log_loss: 0.5133 | accuracy: 0.7491 | brier: 0.1698
+21-25 | rows: 8232 | auc: 0.8769 | log_loss: 0.44 | accuracy: 0.7914 | brier: 0.1428
+26-30 | rows: 5937 | auc: 0.8839 | log_loss: 0.4284 | accuracy: 0.8009 | brier: 0.1381
+31-45 | rows: 4771 | auc: 0.8612 | log_loss: 0.469 | accuracy: 0.7824 | brier: 0.1517
+
+================================================================================
+LogisticRegression -- only_structures
+================================================================================
+Features used: 7
+C:\Users\Jonathan Zhao\AppData\Local\Programs\Python\Python312\Lib\site-packages\sklearn\linear_model\_logistic.py:1184: FutureWarning: 'n_jobs' has no effect since 1.8 and will be removed in 1.10. You provided 'n_jobs=-1', please leave it unspecified.
+  warnings.warn(msg, category=FutureWarning)
+
+LogisticRegression test metrics (only_structures)
+AUC: 0.7351
+Log loss: 0.5938
+Accuracy: 0.6545
+Brier score: 0.2059
+Rows: 59218
+
+Test metrics by minute bucket (only_structures)
+1-5 | rows: 9600 | auc: 0.5219 | log_loss: 0.692 | accuracy: 0.5116 | brier: 0.2494
+6-10 | rows: 9600 | auc: 0.6089 | log_loss: 0.6802 | accuracy: 0.5696 | brier: 0.2436
+11-15 | rows: 9600 | auc: 0.713 | log_loss: 0.6267 | accuracy: 0.6556 | brier: 0.2187
+16-20 | rows: 9060 | auc: 0.7927 | log_loss: 0.5518 | accuracy: 0.7159 | brier: 0.1859
+21-25 | rows: 8232 | auc: 0.8353 | log_loss: 0.4986 | accuracy: 0.7518 | brier: 0.1656
+26-30 | rows: 5937 | auc: 0.8443 | log_loss: 0.4861 | accuracy: 0.7618 | brier: 0.1613
+31-45 | rows: 4771 | auc: 0.8206 | log_loss: 0.5229 | accuracy: 0.7357 | brier: 0.1733
+
+================================================================================
+LogisticRegression -- only_epic_monsters
+================================================================================
+Features used: 9
+C:\Users\Jonathan Zhao\AppData\Local\Programs\Python\Python312\Lib\site-packages\sklearn\linear_model\_logistic.py:1184: FutureWarning: 'n_jobs' has no effect since 1.8 and will be removed in 1.10. You provided 'n_jobs=-1', please leave it unspecified.
+  warnings.warn(msg, category=FutureWarning)
+
+LogisticRegression test metrics (only_epic_monsters)
+AUC: 0.7197
+Log loss: 0.6082
+Accuracy: 0.6457
+Brier score: 0.2113
+Rows: 59218
+
+Test metrics by minute bucket (only_epic_monsters)
+1-5 | rows: 9600 | auc: 0.5 | log_loss: 0.6932 | accuracy: 0.499 | brier: 0.25
+6-10 | rows: 9600 | auc: 0.5846 | log_loss: 0.6852 | accuracy: 0.5572 | brier: 0.2459
+11-15 | rows: 9600 | auc: 0.6671 | log_loss: 0.6473 | accuracy: 0.6421 | brier: 0.2276
+16-20 | rows: 9060 | auc: 0.7688 | log_loss: 0.5779 | accuracy: 0.7035 | brier: 0.1964
+21-25 | rows: 8232 | auc: 0.8331 | log_loss: 0.5065 | accuracy: 0.7539 | brier: 0.1674
+26-30 | rows: 5937 | auc: 0.8432 | log_loss: 0.4925 | accuracy: 0.7625 | brier: 0.1618
+31-45 | rows: 4771 | auc: 0.7897 | log_loss: 0.5612 | accuracy: 0.7261 | brier: 0.1882
+
+================================================================================
+LogisticRegression -- team_level_only
+================================================================================
+Features used: 45
+C:\Users\Jonathan Zhao\AppData\Local\Programs\Python\Python312\Lib\site-packages\sklearn\linear_model\_logistic.py:1184: FutureWarning: 'n_jobs' has no effect since 1.8 and will be removed in 1.10. You provided 'n_jobs=-1', please leave it unspecified.
+  warnings.warn(msg, category=FutureWarning)
+
+LogisticRegression test metrics (team_level_only)
+AUC: 0.8155
+Log loss: 0.5132
+Accuracy: 0.7231
+Brier score: 0.1743
+Rows: 59218
+
+Test metrics by minute bucket (team_level_only)
+1-5 | rows: 9600 | auc: 0.6221 | log_loss: 0.6712 | accuracy: 0.5847 | brier: 0.2393
+6-10 | rows: 9600 | auc: 0.7268 | log_loss: 0.6091 | accuracy: 0.6605 | brier: 0.211
+11-15 | rows: 9600 | auc: 0.8212 | log_loss: 0.5172 | accuracy: 0.7393 | brier: 0.173
+16-20 | rows: 9060 | auc: 0.8606 | log_loss: 0.4629 | accuracy: 0.7699 | brier: 0.1526
+21-25 | rows: 8232 | auc: 0.904 | log_loss: 0.3889 | accuracy: 0.8144 | brier: 0.1262
+26-30 | rows: 5937 | auc: 0.9079 | log_loss: 0.3816 | accuracy: 0.8267 | brier: 0.1231
+31-45 | rows: 4771 | auc: 0.8834 | log_loss: 0.4284 | accuracy: 0.7914 | brier: 0.1412
+
+================================================================================
+LogisticRegression -- role_level_only
+================================================================================
+Features used: 143
+C:\Users\Jonathan Zhao\AppData\Local\Programs\Python\Python312\Lib\site-packages\sklearn\linear_model\_logistic.py:1184: FutureWarning: 'n_jobs' has no effect since 1.8 and will be removed in 1.10. You provided 'n_jobs=-1', please leave it unspecified.
+  warnings.warn(msg, category=FutureWarning)
+
+LogisticRegression test metrics (role_level_only)
+AUC: 0.8173
+Log loss: 0.5108
+Accuracy: 0.7239
+Brier score: 0.1734
+Rows: 59218
+
+Test metrics by minute bucket (role_level_only)
+1-5 | rows: 9600 | auc: 0.6235 | log_loss: 0.6685 | accuracy: 0.5834 | brier: 0.238
+6-10 | rows: 9600 | auc: 0.7298 | log_loss: 0.605 | accuracy: 0.6627 | brier: 0.2095
+11-15 | rows: 9600 | auc: 0.8225 | log_loss: 0.5138 | accuracy: 0.7396 | brier: 0.1721
+16-20 | rows: 9060 | auc: 0.8626 | log_loss: 0.4595 | accuracy: 0.7711 | brier: 0.1515
+21-25 | rows: 8232 | auc: 0.9051 | log_loss: 0.3866 | accuracy: 0.8161 | brier: 0.1254
+26-30 | rows: 5937 | auc: 0.9089 | log_loss: 0.3799 | accuracy: 0.8253 | brier: 0.1225
+31-45 | rows: 4771 | auc: 0.8812 | log_loss: 0.4312 | accuracy: 0.7935 | brier: 0.1416
+
+Saved: results\ablation_results.csv
+
+================================================================================
+ABLATION SUMMARY: full feature set vs. one group removed vs. only that group kept
+================================================================================
+
+XGBoost:
+  Baseline accuracy (majority class): 0.5113
+  Full features     (155 feats): AUC=0.8156  log_loss=0.5141  accuracy=0.7228  brier=0.1743
+
+  -- remove one group --
+  no_economy        (121 feats): AUC=0.8073  log_loss=0.5239  accuracy=0.7171  brier=0.1781
+    AUC retained without gold/XP/level: 99.0%  (gap: 0.0083)
+  no_objectives     (141 feats): AUC=0.8090  log_loss=0.5228  accuracy=0.7180  brier=0.1774
+    AUC retained without objectives/towers: 99.2%  (gap: 0.0066)
+  no_structures     (149 feats): AUC=0.8157  log_loss=0.5143  accuracy=0.7231  brier=0.1743
+    AUC retained without towers/plates: 100.0%  (gap: -0.0001)
+  no_epic_monsters  (147 feats): AUC=0.8091  log_loss=0.5225  accuracy=0.7174  brier=0.1773
+    AUC retained without dragons/heralds/barons/elders: 99.2%  (gap: 0.0065)
+
+  -- keep only one group (+ minute) --
+  only_economy      ( 35 feats): AUC=0.8087  log_loss=0.5225  accuracy=0.7175  brier=0.1775
+    AUC achieved using only gold/XP/level: 99.2% of full  (gap: 0.0069)
+  only_objectives   ( 15 feats): AUC=0.7657  log_loss=0.5671  accuracy=0.6780  brier=0.1945
+    AUC achieved using only objectives/towers: 93.9% of full  (gap: 0.0499)
+  only_structures   (  7 feats): AUC=0.7264  log_loss=0.6021  accuracy=0.6494  brier=0.2089
+    AUC achieved using only towers/plates: 89.1% of full  (gap: 0.0892)
+  only_epic_monsters (  9 feats): AUC=0.7207  log_loss=0.6059  accuracy=0.6448  brier=0.2106
+    AUC achieved using only dragons/heralds/barons/elders: 88.4% of full  (gap: 0.0949)
+
+  -- collinearity: team-level vs. role-level gold/xp/minions/kills/assists/deaths --
+  team_level_only   ( 45 feats): AUC=0.8145  log_loss=0.5160  accuracy=0.7231  brier=0.1749
+    AUC retained without the five per-role gold/xp/minions/kills/assists/deaths diffs (keeping the team-level sums): 99.9%  (gap: 0.0011)
+  role_level_only   (143 feats): AUC=0.8120  log_loss=0.5175  accuracy=0.7193  brier=0.1757
+    AUC retained without the six team-level gold/xp/minions/kills/assists/deaths diffs (keeping the five per-role columns): 99.6%  (gap: 0.0036)
+
+LogisticRegression:
+  Baseline accuracy (majority class): 0.5113
+  Full features     (155 feats): AUC=0.8173  log_loss=0.5108  accuracy=0.7240  brier=0.1734
+
+  -- remove one group --
+  no_economy        (121 feats): AUC=0.8113  log_loss=0.5185  accuracy=0.7203  brier=0.1762
+    AUC retained without gold/XP/level: 99.3%  (gap: 0.0060)
+  no_objectives     (141 feats): AUC=0.8114  log_loss=0.5189  accuracy=0.7193  brier=0.1762
+    AUC retained without objectives/towers: 99.3%  (gap: 0.0059)
+  no_structures     (149 feats): AUC=0.8173  log_loss=0.5109  accuracy=0.7238  brier=0.1734
+    AUC retained without towers/plates: 100.0%  (gap: 0.0000)
+  no_epic_monsters  (147 feats): AUC=0.8113  log_loss=0.5188  accuracy=0.7198  brier=0.1762
+    AUC retained without dragons/heralds/barons/elders: 99.3%  (gap: 0.0060)
+
+  -- keep only one group (+ minute) --
+  only_economy      ( 35 feats): AUC=0.8083  log_loss=0.5223  accuracy=0.7166  brier=0.1776
+    AUC achieved using only gold/XP/level: 98.9% of full  (gap: 0.0090)
+  only_objectives   ( 15 feats): AUC=0.7685  log_loss=0.5632  accuracy=0.6796  brier=0.1932
+    AUC achieved using only objectives/towers: 94.0% of full  (gap: 0.0488)
+  only_structures   (  7 feats): AUC=0.7351  log_loss=0.5938  accuracy=0.6545  brier=0.2059
+    AUC achieved using only towers/plates: 89.9% of full  (gap: 0.0822)
+  only_epic_monsters (  9 feats): AUC=0.7197  log_loss=0.6082  accuracy=0.6457  brier=0.2113
+    AUC achieved using only dragons/heralds/barons/elders: 88.1% of full  (gap: 0.0976)
+
+  -- collinearity: team-level vs. role-level gold/xp/minions/kills/assists/deaths --
+  team_level_only   ( 45 feats): AUC=0.8155  log_loss=0.5132  accuracy=0.7231  brier=0.1743
+    AUC retained without the five per-role gold/xp/minions/kills/assists/deaths diffs (keeping the team-level sums): 99.8%  (gap: 0.0018)
+  role_level_only   (143 feats): AUC=0.8173  log_loss=0.5108  accuracy=0.7239  brier=0.1734
+    AUC retained without the six team-level gold/xp/minions/kills/assists/deaths diffs (keeping the five per-role columns): 100.0%  (gap: 0.0000)
+
+================================================================================
+BOOTSTRAP CONFIDENCE INTERVALS (match-level, n_boot=2000)
+================================================================================
+
+XGBoost -- AUC gap from removing gold/XP/level: 0.0082  (95% CI [0.0046, 0.0120], n_boot=2000)
+
+XGBoost -- AUC gap from removing objectives/towers: 0.0065  (95% CI [0.0032, 0.0100], n_boot=2000)
+
+XGBoost -- no_objectives AUC gap by game closeness (|team_total_gold_diff|):
+  close    | rows:  19747 | median |gold diff|:    292.0 | auc_full: 0.6007 | auc_ablated: 0.5869 | gap: 0.0138 | retained: 97.7%
+  medium   | rows:  19727 | median |gold diff|:   1798.0 | auc_full: 0.7552 | auc_ablated: 0.7431 | gap: 0.0122 | retained: 98.4%
+  blowout  | rows:  19737 | median |gold diff|:   5855.0 | auc_full: 0.9510 | auc_ablated: 0.9452 | gap: 0.0058 | retained: 99.4%
+
+XGBoost -- no_objectives AUC gap by rank:
+  IRON         | rows:   5991 | matches:   191 | auc_full: 0.8271 | auc_ablated: 0.8207 | gap: 0.0064 | retained: 99.2%
+  BRONZE       | rows:   6319 | matches:   199 | auc_full: 0.8029 | auc_ablated: 0.7919 | gap: 0.0110 | retained: 98.6%
+  SILVER       | rows:   6952 | matches:   209 | auc_full: 0.7525 | auc_ablated: 0.7501 | gap: 0.0024 | retained: 99.7%
+  GOLD         | rows:   6431 | matches:   198 | auc_full: 0.8385 | auc_ablated: 0.8345 | gap: 0.0040 | retained: 99.5%
+  PLATINUM     | rows:   6643 | matches:   214 | auc_full: 0.8368 | auc_ablated: 0.8250 | gap: 0.0118 | retained: 98.6%
+  EMERALD      | rows:   5986 | matches:   194 | auc_full: 0.8597 | auc_ablated: 0.8512 | gap: 0.0085 | retained: 99.0%
+  DIAMOND      | rows:   6068 | matches:   197 | auc_full: 0.7982 | auc_ablated: 0.7910 | gap: 0.0072 | retained: 99.1%
+  MASTER       | rows:   5782 | matches:   195 | auc_full: 0.8054 | auc_ablated: 0.7989 | gap: 0.0065 | retained: 99.2%
+  GRANDMASTER  | rows:   5788 | matches:   206 | auc_full: 0.8375 | auc_ablated: 0.8389 | gap: -0.0014 | retained: 100.2%
+  CHALLENGER   | rows:   3282 | matches:   117 | auc_full: 0.7858 | auc_ablated: 0.7842 | gap: 0.0016 | retained: 99.8%
+
+XGBoost -- AUC gap from removing towers/plates: -0.0001  (95% CI [-0.0004, 0.0002], n_boot=2000)
+
+XGBoost -- no_structures AUC gap by game closeness (|team_total_gold_diff|):
+  close    | rows:  19747 | median |gold diff|:    292.0 | auc_full: 0.6007 | auc_ablated: 0.6015 | gap: -0.0008 | retained: 100.1%
+  medium   | rows:  19727 | median |gold diff|:   1798.0 | auc_full: 0.7552 | auc_ablated: 0.7556 | gap: -0.0003 | retained: 100.0%
+  blowout  | rows:  19737 | median |gold diff|:   5855.0 | auc_full: 0.9510 | auc_ablated: 0.9508 | gap: 0.0002 | retained: 100.0%
+
+XGBoost -- no_structures AUC gap by rank:
+  IRON         | rows:   5991 | matches:   191 | auc_full: 0.8271 | auc_ablated: 0.8272 | gap: -0.0001 | retained: 100.0%
+  BRONZE       | rows:   6319 | matches:   199 | auc_full: 0.8029 | auc_ablated: 0.8030 | gap: -0.0001 | retained: 100.0%
+  SILVER       | rows:   6952 | matches:   209 | auc_full: 0.7525 | auc_ablated: 0.7533 | gap: -0.0007 | retained: 100.1%
+  GOLD         | rows:   6431 | matches:   198 | auc_full: 0.8385 | auc_ablated: 0.8392 | gap: -0.0007 | retained: 100.1%
+  PLATINUM     | rows:   6643 | matches:   214 | auc_full: 0.8368 | auc_ablated: 0.8368 | gap: 0.0000 | retained: 100.0%
+  EMERALD      | rows:   5986 | matches:   194 | auc_full: 0.8597 | auc_ablated: 0.8597 | gap: -0.0001 | retained: 100.0%
+  DIAMOND      | rows:   6068 | matches:   197 | auc_full: 0.7982 | auc_ablated: 0.7977 | gap: 0.0005 | retained: 99.9%
+  MASTER       | rows:   5782 | matches:   195 | auc_full: 0.8054 | auc_ablated: 0.8053 | gap: 0.0001 | retained: 100.0%
+  GRANDMASTER  | rows:   5788 | matches:   206 | auc_full: 0.8375 | auc_ablated: 0.8373 | gap: 0.0002 | retained: 100.0%
+  CHALLENGER   | rows:   3282 | matches:   117 | auc_full: 0.7858 | auc_ablated: 0.7850 | gap: 0.0008 | retained: 99.9%
+
+XGBoost -- AUC gap from removing dragons/heralds/barons/elders: 0.0065  (95% CI [0.0031, 0.0098], n_boot=2000)
+
+XGBoost -- AUC gap from keeping only gold/XP/level: 0.0069  (95% CI [0.0030, 0.0107], n_boot=2000)
+
+XGBoost -- only_economy AUC gap by game closeness (|team_total_gold_diff|):
+  close    | rows:  19747 | median |gold diff|:    292.0 | auc_full: 0.6007 | auc_ablated: 0.5853 | gap: 0.0154 | retained: 97.4%
+  medium   | rows:  19727 | median |gold diff|:   1798.0 | auc_full: 0.7552 | auc_ablated: 0.7436 | gap: 0.0116 | retained: 98.5%
+  blowout  | rows:  19737 | median |gold diff|:   5855.0 | auc_full: 0.9510 | auc_ablated: 0.9447 | gap: 0.0063 | retained: 99.3%
+
+XGBoost -- only_economy AUC gap by rank:
+  IRON         | rows:   5991 | matches:   191 | auc_full: 0.8271 | auc_ablated: 0.8193 | gap: 0.0078 | retained: 99.1%
+  BRONZE       | rows:   6319 | matches:   199 | auc_full: 0.8029 | auc_ablated: 0.7938 | gap: 0.0091 | retained: 98.9%
+  SILVER       | rows:   6952 | matches:   209 | auc_full: 0.7525 | auc_ablated: 0.7521 | gap: 0.0004 | retained: 99.9%
+  GOLD         | rows:   6431 | matches:   198 | auc_full: 0.8385 | auc_ablated: 0.8329 | gap: 0.0056 | retained: 99.3%
+  PLATINUM     | rows:   6643 | matches:   214 | auc_full: 0.8368 | auc_ablated: 0.8223 | gap: 0.0145 | retained: 98.3%
+  EMERALD      | rows:   5986 | matches:   194 | auc_full: 0.8597 | auc_ablated: 0.8500 | gap: 0.0097 | retained: 98.9%
+  DIAMOND      | rows:   6068 | matches:   197 | auc_full: 0.7982 | auc_ablated: 0.7941 | gap: 0.0040 | retained: 99.5%
+  MASTER       | rows:   5782 | matches:   195 | auc_full: 0.8054 | auc_ablated: 0.7958 | gap: 0.0095 | retained: 98.8%
+  GRANDMASTER  | rows:   5788 | matches:   206 | auc_full: 0.8375 | auc_ablated: 0.8387 | gap: -0.0012 | retained: 100.1%
+  CHALLENGER   | rows:   3282 | matches:   117 | auc_full: 0.7858 | auc_ablated: 0.7833 | gap: 0.0025 | retained: 99.7%
+
+XGBoost -- AUC gap from keeping only objectives/towers: 0.0498  (95% CI [0.0410, 0.0591], n_boot=2000)
+
+XGBoost -- only_objectives AUC gap by game closeness (|team_total_gold_diff|):
+  close    | rows:  19747 | median |gold diff|:    292.0 | auc_full: 0.6007 | auc_ablated: 0.5459 | gap: 0.0548 | retained: 90.9%
+  medium   | rows:  19727 | median |gold diff|:   1798.0 | auc_full: 0.7552 | auc_ablated: 0.6802 | gap: 0.0751 | retained: 90.1%
+  blowout  | rows:  19737 | median |gold diff|:   5855.0 | auc_full: 0.9510 | auc_ablated: 0.9315 | gap: 0.0195 | retained: 98.0%
+
+XGBoost -- only_objectives AUC gap by rank:
+  IRON         | rows:   5991 | matches:   191 | auc_full: 0.8271 | auc_ablated: 0.7732 | gap: 0.0539 | retained: 93.5%
+  BRONZE       | rows:   6319 | matches:   199 | auc_full: 0.8029 | auc_ablated: 0.7728 | gap: 0.0301 | retained: 96.2%
+  SILVER       | rows:   6952 | matches:   209 | auc_full: 0.7525 | auc_ablated: 0.6955 | gap: 0.0570 | retained: 92.4%
+  GOLD         | rows:   6431 | matches:   198 | auc_full: 0.8385 | auc_ablated: 0.8073 | gap: 0.0312 | retained: 96.3%
+  PLATINUM     | rows:   6643 | matches:   214 | auc_full: 0.8368 | auc_ablated: 0.7993 | gap: 0.0375 | retained: 95.5%
+  EMERALD      | rows:   5986 | matches:   194 | auc_full: 0.8597 | auc_ablated: 0.7940 | gap: 0.0656 | retained: 92.4%
+  DIAMOND      | rows:   6068 | matches:   197 | auc_full: 0.7982 | auc_ablated: 0.7594 | gap: 0.0388 | retained: 95.1%
+  MASTER       | rows:   5782 | matches:   195 | auc_full: 0.8054 | auc_ablated: 0.7522 | gap: 0.0531 | retained: 93.4%
+  GRANDMASTER  | rows:   5788 | matches:   206 | auc_full: 0.8375 | auc_ablated: 0.7648 | gap: 0.0726 | retained: 91.3%
+  CHALLENGER   | rows:   3282 | matches:   117 | auc_full: 0.7858 | auc_ablated: 0.7092 | gap: 0.0765 | retained: 90.3%
+
+XGBoost -- AUC gap from keeping only towers/plates: 0.0891  (95% CI [0.0776, 0.1011], n_boot=2000)
+
+XGBoost -- AUC gap from keeping only dragons/heralds/barons/elders: 0.0948  (95% CI [0.0822, 0.1070], n_boot=2000)
+
+XGBoost -- AUC gap from removing the five per-role gold/xp/minions/kills/assists/deaths diffs (keeping the team-level sums): 0.0011  (95% CI [-0.0008, 0.0030], n_boot=2000)
+
+XGBoost -- AUC gap from removing the six team-level gold/xp/minions/kills/assists/deaths diffs (keeping the five per-role columns): 0.0035  (95% CI [0.0003, 0.0067], n_boot=2000)
+
+LogisticRegression -- AUC gap from removing gold/XP/level: 0.0060  (95% CI [0.0032, 0.0088], n_boot=2000)
+
+LogisticRegression -- AUC gap from removing objectives/towers: 0.0058  (95% CI [0.0014, 0.0102], n_boot=2000)
+
+LogisticRegression -- no_objectives AUC gap by game closeness (|team_total_gold_diff|):
+  close    | rows:  19747 | median |gold diff|:    292.0 | auc_full: 0.6013 | auc_ablated: 0.5906 | gap: 0.0107 | retained: 98.2%
+  medium   | rows:  19727 | median |gold diff|:   1798.0 | auc_full: 0.7570 | auc_ablated: 0.7448 | gap: 0.0122 | retained: 98.4%
+  blowout  | rows:  19737 | median |gold diff|:   5855.0 | auc_full: 0.9528 | auc_ablated: 0.9476 | gap: 0.0052 | retained: 99.5%
+
+LogisticRegression -- no_objectives AUC gap by rank:
+  IRON         | rows:   5991 | matches:   191 | auc_full: 0.8321 | auc_ablated: 0.8251 | gap: 0.0070 | retained: 99.2%
+  BRONZE       | rows:   6319 | matches:   199 | auc_full: 0.8073 | auc_ablated: 0.7958 | gap: 0.0116 | retained: 98.6%
+  SILVER       | rows:   6952 | matches:   209 | auc_full: 0.7614 | auc_ablated: 0.7624 | gap: -0.0010 | retained: 100.1%
+  GOLD         | rows:   6431 | matches:   198 | auc_full: 0.8484 | auc_ablated: 0.8445 | gap: 0.0039 | retained: 99.5%
+  PLATINUM     | rows:   6643 | matches:   214 | auc_full: 0.8389 | auc_ablated: 0.8260 | gap: 0.0129 | retained: 98.5%
+  EMERALD      | rows:   5986 | matches:   194 | auc_full: 0.8543 | auc_ablated: 0.8502 | gap: 0.0042 | retained: 99.5%
+  DIAMOND      | rows:   6068 | matches:   197 | auc_full: 0.7959 | auc_ablated: 0.7876 | gap: 0.0083 | retained: 99.0%
+  MASTER       | rows:   5782 | matches:   195 | auc_full: 0.8001 | auc_ablated: 0.7922 | gap: 0.0080 | retained: 99.0%
+  GRANDMASTER  | rows:   5788 | matches:   206 | auc_full: 0.8326 | auc_ablated: 0.8340 | gap: -0.0014 | retained: 100.2%
+  CHALLENGER   | rows:   3282 | matches:   117 | auc_full: 0.7861 | auc_ablated: 0.7918 | gap: -0.0057 | retained: 100.7%
+
+LogisticRegression -- AUC gap from removing towers/plates: 0.0000  (95% CI [-0.0008, 0.0008], n_boot=2000)
+
+LogisticRegression -- no_structures AUC gap by game closeness (|team_total_gold_diff|):
+  close    | rows:  19747 | median |gold diff|:    292.0 | auc_full: 0.6013 | auc_ablated: 0.6011 | gap: 0.0002 | retained: 100.0%
+  medium   | rows:  19727 | median |gold diff|:   1798.0 | auc_full: 0.7570 | auc_ablated: 0.7571 | gap: -0.0001 | retained: 100.0%
+  blowout  | rows:  19737 | median |gold diff|:   5855.0 | auc_full: 0.9528 | auc_ablated: 0.9525 | gap: 0.0003 | retained: 100.0%
+
+LogisticRegression -- no_structures AUC gap by rank:
+  IRON         | rows:   5991 | matches:   191 | auc_full: 0.8321 | auc_ablated: 0.8332 | gap: -0.0011 | retained: 100.1%
+  BRONZE       | rows:   6319 | matches:   199 | auc_full: 0.8073 | auc_ablated: 0.8086 | gap: -0.0013 | retained: 100.2%
+  SILVER       | rows:   6952 | matches:   209 | auc_full: 0.7614 | auc_ablated: 0.7584 | gap: 0.0031 | retained: 99.6%
+  GOLD         | rows:   6431 | matches:   198 | auc_full: 0.8484 | auc_ablated: 0.8488 | gap: -0.0004 | retained: 100.0%
+  PLATINUM     | rows:   6643 | matches:   214 | auc_full: 0.8389 | auc_ablated: 0.8391 | gap: -0.0002 | retained: 100.0%
+  EMERALD      | rows:   5986 | matches:   194 | auc_full: 0.8543 | auc_ablated: 0.8542 | gap: 0.0001 | retained: 100.0%
+  DIAMOND      | rows:   6068 | matches:   197 | auc_full: 0.7959 | auc_ablated: 0.7947 | gap: 0.0011 | retained: 99.9%
+  MASTER       | rows:   5782 | matches:   195 | auc_full: 0.8001 | auc_ablated: 0.8000 | gap: 0.0001 | retained: 100.0%
+  GRANDMASTER  | rows:   5788 | matches:   206 | auc_full: 0.8326 | auc_ablated: 0.8330 | gap: -0.0004 | retained: 100.0%
+  CHALLENGER   | rows:   3282 | matches:   117 | auc_full: 0.7861 | auc_ablated: 0.7885 | gap: -0.0024 | retained: 100.3%
+
+LogisticRegression -- AUC gap from removing dragons/heralds/barons/elders: 0.0060  (95% CI [0.0017, 0.0101], n_boot=2000)
+
+LogisticRegression -- AUC gap from keeping only gold/XP/level: 0.0089  (95% CI [0.0035, 0.0142], n_boot=2000)
+
+LogisticRegression -- only_economy AUC gap by game closeness (|team_total_gold_diff|):
+  close    | rows:  19747 | median |gold diff|:    292.0 | auc_full: 0.6013 | auc_ablated: 0.5852 | gap: 0.0161 | retained: 97.3%
+  medium   | rows:  19727 | median |gold diff|:   1798.0 | auc_full: 0.7570 | auc_ablated: 0.7409 | gap: 0.0161 | retained: 97.9%
+  blowout  | rows:  19737 | median |gold diff|:   5855.0 | auc_full: 0.9528 | auc_ablated: 0.9460 | gap: 0.0068 | retained: 99.3%
+
+LogisticRegression -- only_economy AUC gap by rank:
+  IRON         | rows:   5991 | matches:   191 | auc_full: 0.8321 | auc_ablated: 0.8237 | gap: 0.0084 | retained: 99.0%
+  BRONZE       | rows:   6319 | matches:   199 | auc_full: 0.8073 | auc_ablated: 0.7929 | gap: 0.0145 | retained: 98.2%
+  SILVER       | rows:   6952 | matches:   209 | auc_full: 0.7614 | auc_ablated: 0.7511 | gap: 0.0103 | retained: 98.6%
+  GOLD         | rows:   6431 | matches:   198 | auc_full: 0.8484 | auc_ablated: 0.8366 | gap: 0.0118 | retained: 98.6%
+  PLATINUM     | rows:   6643 | matches:   214 | auc_full: 0.8389 | auc_ablated: 0.8210 | gap: 0.0178 | retained: 97.9%
+  EMERALD      | rows:   5986 | matches:   194 | auc_full: 0.8543 | auc_ablated: 0.8495 | gap: 0.0049 | retained: 99.4%
+  DIAMOND      | rows:   6068 | matches:   197 | auc_full: 0.7959 | auc_ablated: 0.7881 | gap: 0.0078 | retained: 99.0%
+  MASTER       | rows:   5782 | matches:   195 | auc_full: 0.8001 | auc_ablated: 0.7930 | gap: 0.0072 | retained: 99.1%
+  GRANDMASTER  | rows:   5788 | matches:   206 | auc_full: 0.8326 | auc_ablated: 0.8404 | gap: -0.0078 | retained: 100.9%
+  CHALLENGER   | rows:   3282 | matches:   117 | auc_full: 0.7861 | auc_ablated: 0.7800 | gap: 0.0061 | retained: 99.2%
+
+LogisticRegression -- AUC gap from keeping only objectives/towers: 0.0489  (95% CI [0.0410, 0.0566], n_boot=2000)
+
+LogisticRegression -- only_objectives AUC gap by game closeness (|team_total_gold_diff|):
+  close    | rows:  19747 | median |gold diff|:    292.0 | auc_full: 0.6013 | auc_ablated: 0.5498 | gap: 0.0516 | retained: 91.4%
+  medium   | rows:  19727 | median |gold diff|:   1798.0 | auc_full: 0.7570 | auc_ablated: 0.6787 | gap: 0.0783 | retained: 89.7%
+  blowout  | rows:  19737 | median |gold diff|:   5855.0 | auc_full: 0.9528 | auc_ablated: 0.9335 | gap: 0.0193 | retained: 98.0%
+
+LogisticRegression -- only_objectives AUC gap by rank:
+  IRON         | rows:   5991 | matches:   191 | auc_full: 0.8321 | auc_ablated: 0.7744 | gap: 0.0577 | retained: 93.1%
+  BRONZE       | rows:   6319 | matches:   199 | auc_full: 0.8073 | auc_ablated: 0.7739 | gap: 0.0334 | retained: 95.9%
+  SILVER       | rows:   6952 | matches:   209 | auc_full: 0.7614 | auc_ablated: 0.7062 | gap: 0.0552 | retained: 92.8%
+  GOLD         | rows:   6431 | matches:   198 | auc_full: 0.8484 | auc_ablated: 0.8010 | gap: 0.0474 | retained: 94.4%
+  PLATINUM     | rows:   6643 | matches:   214 | auc_full: 0.8389 | auc_ablated: 0.8023 | gap: 0.0366 | retained: 95.6%
+  EMERALD      | rows:   5986 | matches:   194 | auc_full: 0.8543 | auc_ablated: 0.7990 | gap: 0.0554 | retained: 93.5%
+  DIAMOND      | rows:   6068 | matches:   197 | auc_full: 0.7959 | auc_ablated: 0.7617 | gap: 0.0342 | retained: 95.7%
+  MASTER       | rows:   5782 | matches:   195 | auc_full: 0.8001 | auc_ablated: 0.7547 | gap: 0.0455 | retained: 94.3%
+  GRANDMASTER  | rows:   5788 | matches:   206 | auc_full: 0.8326 | auc_ablated: 0.7703 | gap: 0.0624 | retained: 92.5%
+  CHALLENGER   | rows:   3282 | matches:   117 | auc_full: 0.7861 | auc_ablated: 0.7129 | gap: 0.0732 | retained: 90.7%
+
+LogisticRegression -- AUC gap from keeping only towers/plates: 0.0821  (95% CI [0.0725, 0.0922], n_boot=2000)
+
+LogisticRegression -- AUC gap from keeping only dragons/heralds/barons/elders: 0.0976  (95% CI [0.0852, 0.1094], n_boot=2000)
+
+LogisticRegression -- AUC gap from removing the five per-role gold/xp/minions/kills/assists/deaths diffs (keeping the team-level sums): 0.0018  (95% CI [-0.0013, 0.0049], n_boot=2000)
+
+LogisticRegression -- AUC gap from removing the six team-level gold/xp/minions/kills/assists/deaths diffs (keeping the five per-role columns): -0.0000  (95% CI [-0.0002, 0.0002], n_boot=2000)
+
+Saved: results\ablation_bootstrap_cis.csv
+Saved: results\ablation_closeness_breakdown.csv
+Saved: results\ablation_rank_breakdown.csv

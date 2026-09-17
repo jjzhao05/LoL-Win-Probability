@@ -1,0 +1,329 @@
+Logging full run output to: logs\xgb_train_run_20260916_174606.log
+Reading: xgb_engineered\xgb_clean_dataset.parquet
+Using existing split: results\shared_split_ids.npz
+Rows: 295852
+Matches: 9596
+Train matches: 6140
+Val matches: 1536
+Test matches: 1920
+Features: 154
+
+Feature columns:
+minute
+barons_diff
+barons_diff_delta_3min
+bot_assists_diff
+bot_assists_diff_delta_3min
+bot_base_diff
+bot_deaths_diff
+bot_deaths_diff_delta_3min
+bot_inhib_diff
+bot_inner_diff
+bot_jungle_minions_killed_diff
+bot_jungle_minions_killed_diff_delta_3min
+bot_kills_diff
+bot_kills_diff_delta_3min
+bot_level_diff
+bot_level_diff_delta_3min
+bot_minions_killed_diff
+bot_minions_killed_diff_delta_3min
+bot_outer_diff
+bot_solo_kills_diff
+bot_solo_kills_diff_delta_3min
+bot_total_gold_diff
+bot_total_gold_diff_delta_3min
+bot_wards_killed_diff
+bot_wards_killed_diff_delta_3min
+bot_wards_placed_diff
+bot_wards_placed_diff_delta_3min
+bot_xp_diff
+bot_xp_diff_delta_3min
+dragons_diff
+dragons_diff_delta_3min
+elders_diff
+elders_diff_delta_3min
+first_blood_diff
+first_tower_diff
+heralds_diff
+heralds_diff_delta_3min
+inhib_diff
+inhib_diff_delta_3min
+jg_assists_diff
+jg_assists_diff_delta_3min
+jg_deaths_diff
+jg_deaths_diff_delta_3min
+jg_jungle_minions_killed_diff
+jg_jungle_minions_killed_diff_delta_3min
+jg_kills_diff
+jg_kills_diff_delta_3min
+jg_level_diff
+jg_level_diff_delta_3min
+jg_minions_killed_diff
+jg_minions_killed_diff_delta_3min
+jg_solo_kills_diff
+jg_solo_kills_diff_delta_3min
+jg_total_gold_diff
+jg_total_gold_diff_delta_3min
+jg_wards_killed_diff
+jg_wards_killed_diff_delta_3min
+jg_wards_placed_diff
+jg_wards_placed_diff_delta_3min
+jg_xp_diff
+jg_xp_diff_delta_3min
+mid_assists_diff
+mid_assists_diff_delta_3min
+mid_base_diff
+mid_deaths_diff
+mid_deaths_diff_delta_3min
+mid_inhib_diff
+mid_inner_diff
+mid_jungle_minions_killed_diff
+mid_jungle_minions_killed_diff_delta_3min
+mid_kills_diff
+mid_kills_diff_delta_3min
+mid_level_diff
+mid_level_diff_delta_3min
+mid_minions_killed_diff
+mid_minions_killed_diff_delta_3min
+mid_outer_diff
+mid_solo_kills_diff
+mid_solo_kills_diff_delta_3min
+mid_total_gold_diff
+mid_total_gold_diff_delta_3min
+mid_wards_killed_diff
+mid_wards_killed_diff_delta_3min
+mid_wards_placed_diff
+mid_wards_placed_diff_delta_3min
+mid_xp_diff
+mid_xp_diff_delta_3min
+nexus_towers_diff
+plates_diff
+plates_diff_delta_3min
+sup_assists_diff
+sup_assists_diff_delta_3min
+sup_deaths_diff
+sup_deaths_diff_delta_3min
+sup_jungle_minions_killed_diff
+sup_jungle_minions_killed_diff_delta_3min
+sup_kills_diff
+sup_kills_diff_delta_3min
+sup_level_diff
+sup_level_diff_delta_3min
+sup_minions_killed_diff
+sup_minions_killed_diff_delta_3min
+sup_solo_kills_diff
+sup_solo_kills_diff_delta_3min
+sup_total_gold_diff
+sup_total_gold_diff_delta_3min
+sup_wards_killed_diff
+sup_wards_killed_diff_delta_3min
+sup_wards_placed_diff
+sup_wards_placed_diff_delta_3min
+sup_xp_diff
+sup_xp_diff_delta_3min
+team_assists_diff
+team_assists_diff_delta_3min
+team_damage_done_to_champions_diff
+team_damage_done_to_champions_diff_delta_3min
+team_deaths_diff
+team_deaths_diff_delta_3min
+team_kills_diff
+team_kills_diff_delta_3min
+team_minions_killed_diff
+team_minions_killed_diff_delta_3min
+team_total_gold_diff
+team_total_gold_diff_delta_3min
+team_xp_diff
+team_xp_diff_delta_3min
+top_assists_diff
+top_assists_diff_delta_3min
+top_base_diff
+top_deaths_diff
+top_deaths_diff_delta_3min
+top_inhib_diff
+top_inner_diff
+top_jungle_minions_killed_diff
+top_jungle_minions_killed_diff_delta_3min
+top_kills_diff
+top_kills_diff_delta_3min
+top_level_diff
+top_level_diff_delta_3min
+top_minions_killed_diff
+top_minions_killed_diff_delta_3min
+top_outer_diff
+top_solo_kills_diff
+top_solo_kills_diff_delta_3min
+top_total_gold_diff
+top_total_gold_diff_delta_3min
+top_wards_killed_diff
+top_wards_killed_diff_delta_3min
+top_wards_placed_diff
+top_wards_placed_diff_delta_3min
+top_xp_diff
+top_xp_diff_delta_3min
+tower_diff
+tower_diff_delta_3min
+
+Majority-class baseline accuracy: 0.5113
+
+Total configs: 273 (192 structural + 81 regularization)
+
+================================================================================
+[structural] Config 1/192
+{'min_child_weight': 1, 'gamma': 0, 'reg_alpha': 0, 'reg_lambda': 1, 'max_depth': 3, 'learning_rate': 0.01, 'subsample': 0.6, 'colsample_bytree': 0.7}
+best_iteration=598 val_auc=0.8099 val_log_loss=0.5244 val_accuracy=0.7205 val_brier=0.1775
+
+================================================================================
+[structural] Config 2/192
+{'min_child_weight': 1, 'gamma': 0, 'reg_alpha': 0, 'reg_lambda': 1, 'max_depth': 3, 'learning_rate': 0.01, 'subsample': 0.6, 'colsample_bytree': 0.85}
+best_iteration=597 val_auc=0.8100 val_log_loss=0.5243 val_accuracy=0.7207 val_brier=0.1775
+
+================================================================================
+[structural] Config 3/192
+{'min_child_weight': 1, 'gamma': 0, 'reg_alpha': 0, 'reg_lambda': 1, 'max_depth': 3, 'learning_rate': 0.01, 'subsample': 0.6, 'colsample_bytree': 1.0}
+best_iteration=599 val_auc=0.8099 val_log_loss=0.5244 val_accuracy=0.7203 val_brier=0.1775
+
+================================================================================
+[structural] Config 4/192
+{'min_child_weight': 1, 'gamma': 0, 'reg_alpha': 0, 'reg_lambda': 1, 'max_depth': 3, 'learning_rate': 0.01, 'subsample': 0.7, 'colsample_bytree': 0.7}
+best_iteration=585 val_auc=0.8100 val_log_loss=0.5244 val_accuracy=0.7204 val_brier=0.1775
+
+================================================================================
+[structural] Config 5/192
+{'min_child_weight': 1, 'gamma': 0, 'reg_alpha': 0, 'reg_lambda': 1, 'max_depth': 3, 'learning_rate': 0.01, 'subsample': 0.7, 'colsample_bytree': 0.85}
+best_iteration=599 val_auc=0.8101 val_log_loss=0.5242 val_accuracy=0.7209 val_brier=0.1774
+
+================================================================================
+[structural] Config 6/192
+{'min_child_weight': 1, 'gamma': 0, 'reg_alpha': 0, 'reg_lambda': 1, 'max_depth': 3, 'learning_rate': 0.01, 'subsample': 0.7, 'colsample_bytree': 1.0}
+best_iteration=599 val_auc=0.8099 val_log_loss=0.5244 val_accuracy=0.7203 val_brier=0.1775
+
+================================================================================
+[structural] Config 7/192
+{'min_child_weight': 1, 'gamma': 0, 'reg_alpha': 0, 'reg_lambda': 1, 'max_depth': 3, 'learning_rate': 0.01, 'subsample': 0.85, 'colsample_bytree': 0.7}
+best_iteration=597 val_auc=0.8099 val_log_loss=0.5244 val_accuracy=0.7208 val_brier=0.1775
+
+================================================================================
+[structural] Config 8/192
+{'min_child_weight': 1, 'gamma': 0, 'reg_alpha': 0, 'reg_lambda': 1, 'max_depth': 3, 'learning_rate': 0.01, 'subsample': 0.85, 'colsample_bytree': 0.85}
+best_iteration=587 val_auc=0.8099 val_log_loss=0.5245 val_accuracy=0.7203 val_brier=0.1775
+
+================================================================================
+[structural] Config 9/192
+{'min_child_weight': 1, 'gamma': 0, 'reg_alpha': 0, 'reg_lambda': 1, 'max_depth': 3, 'learning_rate': 0.01, 'subsample': 0.85, 'colsample_bytree': 1.0}
+best_iteration=589 val_auc=0.8098 val_log_loss=0.5245 val_accuracy=0.7206 val_brier=0.1775
+
+================================================================================
+[structural] Config 10/192
+{'min_child_weight': 1, 'gamma': 0, 'reg_alpha': 0, 'reg_lambda': 1, 'max_depth': 3, 'learning_rate': 0.01, 'subsample': 1.0, 'colsample_bytree': 0.7}
+best_iteration=599 val_auc=0.8098 val_log_loss=0.5245 val_accuracy=0.7200 val_brier=0.1775
+
+================================================================================
+[structural] Config 11/192
+{'min_child_weight': 1, 'gamma': 0, 'reg_alpha': 0, 'reg_lambda': 1, 'max_depth': 3, 'learning_rate': 0.01, 'subsample': 1.0, 'colsample_bytree': 0.85}
+best_iteration=599 val_auc=0.8097 val_log_loss=0.5245 val_accuracy=0.7201 val_brier=0.1776
+
+================================================================================
+[structural] Config 12/192
+{'min_child_weight': 1, 'gamma': 0, 'reg_alpha': 0, 'reg_lambda': 1, 'max_depth': 3, 'learning_rate': 0.01, 'subsample': 1.0, 'colsample_bytree': 1.0}
+best_iteration=599 val_auc=0.8097 val_log_loss=0.5246 val_accuracy=0.7204 val_brier=0.1776
+
+================================================================================
+[structural] Config 13/192
+{'min_child_weight': 1, 'gamma': 0, 'reg_alpha': 0, 'reg_lambda': 1, 'max_depth': 3, 'learning_rate': 0.03, 'subsample': 0.6, 'colsample_bytree': 0.7}
+best_iteration=259 val_auc=0.8103 val_log_loss=0.5238 val_accuracy=0.7207 val_brier=0.1773
+
+================================================================================
+[structural] Config 14/192
+{'min_child_weight': 1, 'gamma': 0, 'reg_alpha': 0, 'reg_lambda': 1, 'max_depth': 3, 'learning_rate': 0.03, 'subsample': 0.6, 'colsample_bytree': 0.85}
+best_iteration=252 val_auc=0.8102 val_log_loss=0.5239 val_accuracy=0.7211 val_brier=0.1774
+
+================================================================================
+[structural] Config 15/192
+{'min_child_weight': 1, 'gamma': 0, 'reg_alpha': 0, 'reg_lambda': 1, 'max_depth': 3, 'learning_rate': 0.03, 'subsample': 0.6, 'colsample_bytree': 1.0}
+best_iteration=290 val_auc=0.8100 val_log_loss=0.5240 val_accuracy=0.7202 val_brier=0.1774
+
+================================================================================
+[structural] Config 16/192
+{'min_child_weight': 1, 'gamma': 0, 'reg_alpha': 0, 'reg_lambda': 1, 'max_depth': 3, 'learning_rate': 0.03, 'subsample': 0.7, 'colsample_bytree': 0.7}
+best_iteration=251 val_auc=0.8101 val_log_loss=0.5239 val_accuracy=0.7207 val_brier=0.1773
+
+================================================================================
+[structural] Config 17/192
+{'min_child_weight': 1, 'gamma': 0, 'reg_alpha': 0, 'reg_lambda': 1, 'max_depth': 3, 'learning_rate': 0.03, 'subsample': 0.7, 'colsample_bytree': 0.85}
+best_iteration=265 val_auc=0.8100 val_log_loss=0.5239 val_accuracy=0.7205 val_brier=0.1774
+
+================================================================================
+[structural] Config 18/192
+{'min_child_weight': 1, 'gamma': 0, 'reg_alpha': 0, 'reg_lambda': 1, 'max_depth': 3, 'learning_rate': 0.03, 'subsample': 0.7, 'colsample_bytree': 1.0}
+best_iteration=262 val_auc=0.8101 val_log_loss=0.5240 val_accuracy=0.7205 val_brier=0.1774
+
+================================================================================
+[structural] Config 19/192
+{'min_child_weight': 1, 'gamma': 0, 'reg_alpha': 0, 'reg_lambda': 1, 'max_depth': 3, 'learning_rate': 0.03, 'subsample': 0.85, 'colsample_bytree': 0.7}
+best_iteration=262 val_auc=0.8102 val_log_loss=0.5238 val_accuracy=0.7201 val_brier=0.1773
+
+================================================================================
+[structural] Config 20/192
+{'min_child_weight': 1, 'gamma': 0, 'reg_alpha': 0, 'reg_lambda': 1, 'max_depth': 3, 'learning_rate': 0.03, 'subsample': 0.85, 'colsample_bytree': 0.85}
+best_iteration=267 val_auc=0.8099 val_log_loss=0.5240 val_accuracy=0.7205 val_brier=0.1774
+
+================================================================================
+[structural] Config 21/192
+{'min_child_weight': 1, 'gamma': 0, 'reg_alpha': 0, 'reg_lambda': 1, 'max_depth': 3, 'learning_rate': 0.03, 'subsample': 0.85, 'colsample_bytree': 1.0}
+best_iteration=239 val_auc=0.8099 val_log_loss=0.5242 val_accuracy=0.7205 val_brier=0.1775
+
+================================================================================
+[structural] Config 22/192
+{'min_child_weight': 1, 'gamma': 0, 'reg_alpha': 0, 'reg_lambda': 1, 'max_depth': 3, 'learning_rate': 0.03, 'subsample': 1.0, 'colsample_bytree': 0.7}
+best_iteration=275 val_auc=0.8099 val_log_loss=0.5240 val_accuracy=0.7202 val_brier=0.1774
+
+================================================================================
+[structural] Config 23/192
+{'min_child_weight': 1, 'gamma': 0, 'reg_alpha': 0, 'reg_lambda': 1, 'max_depth': 3, 'learning_rate': 0.03, 'subsample': 1.0, 'colsample_bytree': 0.85}
+best_iteration=236 val_auc=0.8099 val_log_loss=0.5241 val_accuracy=0.7202 val_brier=0.1774
+
+================================================================================
+[structural] Config 24/192
+{'min_child_weight': 1, 'gamma': 0, 'reg_alpha': 0, 'reg_lambda': 1, 'max_depth': 3, 'learning_rate': 0.03, 'subsample': 1.0, 'colsample_bytree': 1.0}
+best_iteration=249 val_auc=0.8098 val_log_loss=0.5242 val_accuracy=0.7200 val_brier=0.1775
+
+================================================================================
+[structural] Config 25/192
+{'min_child_weight': 1, 'gamma': 0, 'reg_alpha': 0, 'reg_lambda': 1, 'max_depth': 3, 'learning_rate': 0.05, 'subsample': 0.6, 'colsample_bytree': 0.7}
+best_iteration=137 val_auc=0.8102 val_log_loss=0.5239 val_accuracy=0.7203 val_brier=0.1773
+
+================================================================================
+[structural] Config 26/192
+{'min_child_weight': 1, 'gamma': 0, 'reg_alpha': 0, 'reg_lambda': 1, 'max_depth': 3, 'learning_rate': 0.05, 'subsample': 0.6, 'colsample_bytree': 0.85}
+best_iteration=149 val_auc=0.8099 val_log_loss=0.5241 val_accuracy=0.7200 val_brier=0.1774
+
+================================================================================
+[structural] Config 27/192
+{'min_child_weight': 1, 'gamma': 0, 'reg_alpha': 0, 'reg_lambda': 1, 'max_depth': 3, 'learning_rate': 0.05, 'subsample': 0.6, 'colsample_bytree': 1.0}
+best_iteration=141 val_auc=0.8102 val_log_loss=0.5239 val_accuracy=0.7203 val_brier=0.1773
+
+================================================================================
+[structural] Config 28/192
+{'min_child_weight': 1, 'gamma': 0, 'reg_alpha': 0, 'reg_lambda': 1, 'max_depth': 3, 'learning_rate': 0.05, 'subsample': 0.7, 'colsample_bytree': 0.7}
+best_iteration=158 val_auc=0.8099 val_log_loss=0.5240 val_accuracy=0.7204 val_brier=0.1774
+
+================================================================================
+[structural] Config 29/192
+{'min_child_weight': 1, 'gamma': 0, 'reg_alpha': 0, 'reg_lambda': 1, 'max_depth': 3, 'learning_rate': 0.05, 'subsample': 0.7, 'colsample_bytree': 0.85}
+best_iteration=180 val_auc=0.8098 val_log_loss=0.5242 val_accuracy=0.7196 val_brier=0.1775
+
+================================================================================
+[structural] Config 30/192
+{'min_child_weight': 1, 'gamma': 0, 'reg_alpha': 0, 'reg_lambda': 1, 'max_depth': 3, 'learning_rate': 0.05, 'subsample': 0.7, 'colsample_bytree': 1.0}
+best_iteration=167 val_auc=0.8099 val_log_loss=0.5242 val_accuracy=0.7200 val_brier=0.1775
+
+================================================================================
+[structural] Config 31/192
+{'min_child_weight': 1, 'gamma': 0, 'reg_alpha': 0, 'reg_lambda': 1, 'max_depth': 3, 'learning_rate': 0.05, 'subsample': 0.85, 'colsample_bytree': 0.7}
+Exception ignored on calling ctypes callback function: <bound method DataIter._next_wrapper of <xgboost.data.SingleBatchInternalIter object at 0x0000028FCFBCCDD0>>
+Traceback (most recent call last):
+  File "C:\Users\Jonathan Zhao\AppData\Local\Programs\Python\Python312\Lib\site-packages\xgboost\core.py", line 607, in _next_wrapper
+    def _next_wrapper(self, this: None) -> int:  # pylint: disable=unused-argument
+
+KeyboardInterrupt: 

@@ -1,5 +1,7 @@
-import csv
 import itertools
+import random
+import sys
+from datetime import datetime
 from pathlib import Path
 
 import matplotlib.pyplot as plt
@@ -15,10 +17,14 @@ from common import (
     VAL_SIZE,
     compute_metrics,
     evaluate_by_minute_bucket,
+    get_xy,
     infer_monotone_constraints,
+    load_engineered_dataset,
+    load_or_create_split,
     print_bucket_rows,
     print_metrics,
     save_calibration_plot,
+    save_results_csv,
 )
 
 
@@ -32,63 +38,20 @@ FEATURE_IMPORTANCE_CSV = Path("results/xgb_feature_importances.csv")
 FEATURE_IMPORTANCE_PLOT = Path("figures/xgb_feature_importance.png")
 TOP_N_FEATURES_PLOTTED = 25
 
-TEST_SIZE = 0.20
+LOG_DIR = Path("logs")
 
 MAX_ESTIMATORS = 600
 EARLY_STOPPING_ROUNDS = 30
 
+# Tree-structure/sampling params only. A regularization sweep
+# (min_child_weight, gamma, reg_alpha, reg_lambda) was tried and removed
+# again -- it isn't part of this grid.
 GRID = {
     "max_depth": [3, 4, 6, 8],
     "learning_rate": [0.01, 0.03, 0.05, 0.1],
     "subsample": [0.6, 0.7, 0.85, 1.0],
     "colsample_bytree": [0.7, 0.85, 1.0],
 }
-
-
-def load_or_create_split(match_ids):
-    match_ids = np.array(sorted(pd.Series(match_ids).astype(str).unique()))
-
-    if SPLIT_FILE.exists():
-        print("Using existing split:", SPLIT_FILE)
-
-        data = np.load(SPLIT_FILE, allow_pickle=True)
-
-        train_ids = data["train_ids"].astype(str)
-        test_ids = data["test_ids"].astype(str)
-
-        return train_ids, test_ids
-
-    print("Creating split:", SPLIT_FILE)
-
-    train_ids, test_ids = train_test_split(
-        match_ids,
-        test_size=TEST_SIZE,
-        random_state=RANDOM_STATE,
-    )
-
-    SPLIT_FILE.parent.mkdir(parents=True, exist_ok=True)
-
-    np.savez_compressed(
-        SPLIT_FILE,
-        train_ids=train_ids,
-        test_ids=test_ids,
-    )
-
-    return train_ids, test_ids
-
-
-def get_xy(df):
-    y = df["target"].astype(int)
-
-    drop_cols = [
-        "match_id",
-        "target",
-        "timestamp_sec",
-    ]
-
-    X = df.drop(columns=[c for c in drop_cols if c in df.columns])
-
-    return X, y
 
 
 def config_iterator():
@@ -130,18 +93,6 @@ def train_one_config(config, X_fit, y_fit, X_val, y_val, monotone_constraints):
     }
 
 
-def save_results_csv(results):
-    if not results:
-        return
-
-    RESULTS_FILE.parent.mkdir(parents=True, exist_ok=True)
-
-    with open(RESULTS_FILE, "w", newline="", encoding="utf-8") as f:
-        writer = csv.DictWriter(f, fieldnames=results[0].keys())
-        writer.writeheader()
-        writer.writerows(results)
-
-
 def save_feature_importances(model, feature_names, csv_path, plot_path, top_n=TOP_N_FEATURES_PLOTTED):
     booster = model.get_booster()
 
@@ -177,18 +128,35 @@ def save_feature_importances(model, feature_names, csv_path, plot_path, top_n=TO
     return imp_df
 
 
+class Tee:
+    """Mirrors writes to every stream it wraps (e.g. the real console plus
+    a log file), so redirecting sys.stdout/sys.stderr through one of these
+    logs a full run without touching any of the print() calls above."""
+
+    def __init__(self, *streams):
+        self.streams = streams
+
+    def write(self, data):
+        for stream in self.streams:
+            stream.write(data)
+            stream.flush()
+
+    def flush(self):
+        for stream in self.streams:
+            stream.flush()
+
+
 def main():
-    print("Reading:", INPUT_FILE)
+    # Belt-and-suspenders seeding: train_test_split and XGBClassifier below
+    # already take random_state=RANDOM_STATE directly, which is what
+    # actually controls the split and the model fit. Seeding the global
+    # random/numpy state too means nothing in this run depends on
+    # unseeded global state, even indirectly (e.g. via a library call that
+    # doesn't expose its own random_state argument).
+    random.seed(RANDOM_STATE)
+    np.random.seed(RANDOM_STATE)
 
-    df = pd.read_parquet(INPUT_FILE)
-
-    required = {"match_id", "target", "minute"}
-    missing = required - set(df.columns)
-
-    if missing:
-        raise ValueError(f"Missing required columns: {sorted(missing)}")
-
-    df["match_id"] = df["match_id"].astype(str)
+    df = load_engineered_dataset(INPUT_FILE)
 
     train_ids, test_ids = load_or_create_split(df["match_id"])
 
@@ -273,7 +241,7 @@ def main():
         }
 
         results.append(row)
-        save_results_csv(results)
+        save_results_csv(results, RESULTS_FILE)
 
         if result["val_log_loss"] < best_val_log_loss:
             best_val_log_loss = result["val_log_loss"]
@@ -330,4 +298,18 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    LOG_DIR.mkdir(parents=True, exist_ok=True)
+    log_path = LOG_DIR / f"xgb_train_run_{datetime.now():%Y%m%d_%H%M%S}.log"
+
+    real_stdout, real_stderr = sys.stdout, sys.stderr
+
+    with open(log_path, "w", encoding="utf-8") as log_f:
+        sys.stdout = Tee(real_stdout, log_f)
+        sys.stderr = Tee(real_stderr, log_f)
+
+        try:
+            print(f"Logging full run output to: {log_path}")
+            main()
+        finally:
+            sys.stdout = real_stdout
+            sys.stderr = real_stderr

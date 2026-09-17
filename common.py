@@ -1,12 +1,20 @@
+import csv
 from pathlib import Path
 
 import numpy as np
+import pandas as pd
 from sklearn.calibration import calibration_curve
 from sklearn.metrics import accuracy_score, brier_score_loss, log_loss, roc_auc_score
+from sklearn.model_selection import train_test_split
 
 
 ROLES = ["top", "jg", "mid", "bot", "sup"]
 TEAMS = [100, 200]
+
+# Single source of truth for model colors so every figure in the project
+# (ablation_plotter.py, rank_breakdown.py, probability_plot.py, app.py)
+# draws XGBoost and logistic regression in the same two colors.
+MODEL_COLORS = {"XGBoost": "#1f77b4", "LogisticRegression": "#ff7f0e"}
 
 BASIC_STATS = [
     "total_gold",
@@ -86,8 +94,82 @@ MINUTE_BUCKETS = [
 
 RANDOM_STATE = 101705
 VAL_SIZE = 0.20
+TEST_SIZE = 0.20
 
 SPLIT_FILE = Path("results/shared_split_ids.npz")
+
+# Columns every training script needs from xgboost_engineering.py's output.
+REQUIRED_ENGINEERED_COLUMNS = {"match_id", "target", "minute"}
+
+
+def load_engineered_dataset(path):
+    """Read the engineered-features parquet and sanity-check it has the
+    columns every training script depends on. Shared by xgboost_train.py
+    and logistic_regression_train.py, which both read the same file."""
+    print("Reading:", path)
+
+    df = pd.read_parquet(path)
+
+    missing = REQUIRED_ENGINEERED_COLUMNS - set(df.columns)
+    if missing:
+        raise ValueError(f"Missing required columns: {sorted(missing)}")
+
+    df["match_id"] = df["match_id"].astype(str)
+
+    return df
+
+
+def load_or_create_split(match_ids, test_size=TEST_SIZE):
+    """Match-id-level train/test split, cached to SPLIT_FILE so xgboost and
+    logistic regression are compared on the exact same held-out matches."""
+    match_ids = np.array(sorted(pd.Series(match_ids).astype(str).unique()))
+
+    if SPLIT_FILE.exists():
+        print("Using existing split:", SPLIT_FILE)
+
+        data = np.load(SPLIT_FILE, allow_pickle=True)
+
+        return data["train_ids"].astype(str), data["test_ids"].astype(str)
+
+    print("Creating split:", SPLIT_FILE)
+
+    train_ids, test_ids = train_test_split(
+        match_ids,
+        test_size=test_size,
+        random_state=RANDOM_STATE,
+    )
+
+    SPLIT_FILE.parent.mkdir(parents=True, exist_ok=True)
+
+    np.savez_compressed(
+        SPLIT_FILE,
+        train_ids=train_ids,
+        test_ids=test_ids,
+    )
+
+    return train_ids, test_ids
+
+
+def get_xy(df, drop_cols=("match_id", "target", "timestamp_sec")):
+    y = df["target"].astype(int)
+    X = df.drop(columns=[c for c in drop_cols if c in df.columns])
+
+    return X, y
+
+
+def save_results_csv(results, path):
+    """Write a grid-search results table, re-called after every config so
+    progress survives an interrupted run."""
+    if not results:
+        return
+
+    path = Path(path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+
+    with open(path, "w", newline="", encoding="utf-8") as f:
+        writer = csv.DictWriter(f, fieldnames=results[0].keys())
+        writer.writeheader()
+        writer.writerows(results)
 
 
 def compute_metrics(y_true, probs):
@@ -175,7 +257,7 @@ def save_calibration_plot(y_true, probs, out_path, title, n_bins=10):
     ax.set_ylabel("Observed win rate")
     ax.set_xlim(0, 1)
     ax.set_ylim(0, 1)
-    ax.set_title(f"{title} (Brier = {brier:.4f})")
+    ax.set_title(title)
     ax.legend()
     ax.grid(True, alpha=0.25)
 

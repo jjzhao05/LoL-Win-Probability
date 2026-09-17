@@ -1,5 +1,6 @@
-import csv
 import itertools
+import sys
+from datetime import datetime
 from pathlib import Path
 
 import joblib
@@ -7,6 +8,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
+from sklearn.impute import SimpleImputer
 from sklearn.linear_model import LogisticRegression
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
@@ -17,9 +19,13 @@ from common import (
     VAL_SIZE,
     compute_metrics,
     evaluate_by_minute_bucket,
+    get_xy,
+    load_engineered_dataset,
+    load_or_create_split,
     print_bucket_rows,
     print_metrics,
     save_calibration_plot,
+    save_results_csv,
 )
 
 
@@ -33,59 +39,21 @@ FEATURE_IMPORTANCE_CSV = Path("results/logreg_feature_importances.csv")
 FEATURE_IMPORTANCE_PLOT = Path("figures/logreg_feature_importance.png")
 TOP_N_FEATURES_PLOTTED = 25
 
-TEST_SIZE = 0.20
+LOG_DIR = Path("logs")
+
 MAX_ITER = 1000
 
 GRID = {
     "C": [0.001, 0.01, 0.1, 1.0, 10.0, 100.0],
 }
-PENALTY = "l2"
-
-
-def load_or_create_split(match_ids):
-    match_ids = np.array(sorted(pd.Series(match_ids).astype(str).unique()))
-
-    if SPLIT_FILE.exists():
-        print("Using existing split:", SPLIT_FILE)
-
-        data = np.load(SPLIT_FILE, allow_pickle=True)
-
-        train_ids = data["train_ids"].astype(str)
-        test_ids = data["test_ids"].astype(str)
-
-        return train_ids, test_ids
-
-    print("Creating split:", SPLIT_FILE)
-
-    train_ids, test_ids = train_test_split(
-        match_ids,
-        test_size=TEST_SIZE,
-        random_state=RANDOM_STATE,
-    )
-
-    SPLIT_FILE.parent.mkdir(parents=True, exist_ok=True)
-
-    np.savez_compressed(
-        SPLIT_FILE,
-        train_ids=train_ids,
-        test_ids=test_ids,
-    )
-
-    return train_ids, test_ids
-
-
-def get_xy(df):
-    y = df["target"].astype(int)
-
-    drop_cols = [
-        "match_id",
-        "target",
-        "timestamp_sec",
-    ]
-
-    X = df.drop(columns=[c for c in drop_cols if c in df.columns])
-
-    return X, y
+# sklearn >=1.8 deprecates the `penalty` argument in favor of `l1_ratio`
+# (l1_ratio=0 == old penalty="l2", l1_ratio=1 == old penalty="l1"; see the
+# FutureWarning sklearn raises otherwise). L1_RATIO=0 keeps this project's
+# usual L2/ridge behavior, just spelled the way that stays valid once
+# `penalty` is actually removed in 1.10. PENALTY_LABEL is kept purely for
+# the grid-search CSV/log output, which has always recorded "penalty".
+L1_RATIO = 0
+PENALTY_LABEL = "l2"
 
 
 def config_iterator():
@@ -101,7 +69,7 @@ def train_one_config(config, X_fit, y_fit, X_val, y_val, scaler):
     X_val_scaled = scaler.transform(X_val)
 
     model = LogisticRegression(
-        penalty=PENALTY,
+        l1_ratio=L1_RATIO,
         C=config["C"],
         max_iter=MAX_ITER,
         random_state=RANDOM_STATE,
@@ -119,18 +87,6 @@ def train_one_config(config, X_fit, y_fit, X_val, y_val, scaler):
         "val_accuracy": val_metrics["accuracy"],
         "val_brier": val_metrics["brier"],
     }
-
-
-def save_results_csv(results):
-    if not results:
-        return
-
-    RESULTS_FILE.parent.mkdir(parents=True, exist_ok=True)
-
-    with open(RESULTS_FILE, "w", newline="", encoding="utf-8") as f:
-        writer = csv.DictWriter(f, fieldnames=results[0].keys())
-        writer.writeheader()
-        writer.writerows(results)
 
 
 def save_feature_importances(model, feature_names, csv_path, plot_path, top_n=TOP_N_FEATURES_PLOTTED):
@@ -161,17 +117,7 @@ def save_feature_importances(model, feature_names, csv_path, plot_path, top_n=TO
 
 
 def main():
-    print("Reading:", INPUT_FILE)
-
-    df = pd.read_parquet(INPUT_FILE)
-
-    required = {"match_id", "target", "minute"}
-    missing = required - set(df.columns)
-
-    if missing:
-        raise ValueError(f"Missing required columns: {sorted(missing)}")
-
-    df["match_id"] = df["match_id"].astype(str)
+    df = load_engineered_dataset(INPUT_FILE)
 
     train_ids, test_ids = load_or_create_split(df["match_id"])
 
@@ -201,6 +147,16 @@ def main():
     X_fit, y_fit = get_xy(fit_df)
     X_val, y_val = get_xy(val_df)
     X_test, y_test = get_xy(test_df)
+
+    # Per-role diff columns are NaN on rows where collect_data.py couldn't
+    # resolve one of the five roles for a match (missing teamPosition data
+    # from Riot). XGBoost handles that natively, but StandardScaler/
+    # LogisticRegression can't -- so impute with the training-set median
+    # (fit on train only, applied to val/test) before scaling.
+    imputer = SimpleImputer(strategy="median")
+    X_fit = pd.DataFrame(imputer.fit_transform(X_fit), columns=X_fit.columns, index=X_fit.index)
+    X_val = pd.DataFrame(imputer.transform(X_val), columns=X_val.columns, index=X_val.index)
+    X_test = pd.DataFrame(imputer.transform(X_test), columns=X_test.columns, index=X_test.index)
 
     print("Rows:", len(df))
     print("Matches:", df["match_id"].nunique())
@@ -243,7 +199,7 @@ def main():
 
         row = {
             **config,
-            "penalty": PENALTY,
+            "penalty": PENALTY_LABEL,
             "val_auc": result["val_auc"],
             "val_log_loss": result["val_log_loss"],
             "val_accuracy": result["val_accuracy"],
@@ -251,7 +207,7 @@ def main():
         }
 
         results.append(row)
-        save_results_csv(results)
+        save_results_csv(results, RESULTS_FILE)
 
         if result["val_log_loss"] < best_val_log_loss:
             best_val_log_loss = result["val_log_loss"]
@@ -299,7 +255,7 @@ def main():
 
     MODEL_FILE.parent.mkdir(parents=True, exist_ok=True)
     PREDICTIONS_FILE.parent.mkdir(parents=True, exist_ok=True)
-    joblib.dump({"scaler": scaler, "model": best_model}, MODEL_FILE)
+    joblib.dump({"imputer": imputer, "scaler": scaler, "model": best_model}, MODEL_FILE)
     pred_df.to_parquet(PREDICTIONS_FILE, index=False)
 
     print()
@@ -308,5 +264,37 @@ def main():
     print("Saved shared split to:", SPLIT_FILE)
 
 
+class Tee:
+    """Mirrors writes to every stream it wraps (e.g. the real console plus
+    a log file), so redirecting sys.stdout/sys.stderr through one of these
+    logs a full run without touching any of the print() calls above."""
+
+    def __init__(self, *streams):
+        self.streams = streams
+
+    def write(self, data):
+        for stream in self.streams:
+            stream.write(data)
+            stream.flush()
+
+    def flush(self):
+        for stream in self.streams:
+            stream.flush()
+
+
 if __name__ == "__main__":
-    main()
+    LOG_DIR.mkdir(parents=True, exist_ok=True)
+    log_path = LOG_DIR / f"logreg_train_run_{datetime.now():%Y%m%d_%H%M%S}.log"
+
+    real_stdout, real_stderr = sys.stdout, sys.stderr
+
+    with open(log_path, "w", encoding="utf-8") as log_f:
+        sys.stdout = Tee(real_stdout, log_f)
+        sys.stderr = Tee(real_stderr, log_f)
+
+        try:
+            print(f"Logging full run output to: {log_path}")
+            main()
+        finally:
+            sys.stdout = real_stdout
+            sys.stderr = real_stderr

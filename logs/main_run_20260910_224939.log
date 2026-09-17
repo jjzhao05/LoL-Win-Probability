@@ -1,0 +1,186 @@
+Run started: 2026-09-10T22:49:39.827455
+
+================================================================================
+Running: summary_stats.py
+================================================================================
+Loaded 295852 rows from 'match_snapshots'
+
+Deduplicated to 9596 unique games using final snapshot per match
+
+============================================================
+OVERALL SUMMARY STATS
+============================================================
+                                                 stat          value
+                           num_timeline_snapshot_rows         295852
+                                            num_games           9596
+                                   num_unique_patches              1
+                          num_unique_champions_picked            173
+                                avg_game_duration_min          29.33
+                             median_game_duration_min          29.13
+                                     longest_game_min          68.77
+                                longest_game_match_id NA1_5637488067
+                                    shortest_game_min          15.02
+                               shortest_game_match_id NA1_5638699608
+                          blue_side_team_100_win_rate          0.495
+                           red_side_team_200_win_rate          0.505
+                             avg_first_blood_time_sec          132.2
+                             avg_first_tower_time_sec          821.5
+                           avg_total_dragons_per_game            4.0
+                            avg_total_barons_per_game           1.03
+                           avg_total_heralds_per_game           0.84
+                          pct_games_with_elder_dragon            7.9
+                                 pct_games_with_baron           74.5
+             win_rate_with_500plus_gold_lead_at_15min         0.7711
+                     avg_gold_lead_magnitude_at_15min         3179.0
+num_comeback_wins_from_1000plus_gold_deficit_at_15min           1537
+                        pct_games_that_were_comebacks           16.0
+
+============================================================
+DOES SECURING AN OBJECTIVE ACTUALLY WIN YOU THE GAME?
+============================================================
+       objective  win_rate_for_team_that_secured_it  games_with_clear_advantage
+     first_blood                             0.5732                        9596
+     first_tower                             0.6907                        9567
+dragon_advantage                             0.8286                        8403
+ baron_advantage                             0.8761                        6402
+herald_advantage                             0.6624                        8065
+
+============================================================
+CORRELATION OF EACH FEATURE GROUP WITH GOLD DIFFERENCE
+============================================================
+    feature  pearson_corr_with_gold_diff  n_rows
+  kill_diff                       0.8567  295676
+ tower_diff                      -0.7884  295676
+ plate_diff                       0.7617  295676
+dragon_diff                       0.4742  295676
+ baron_diff                       0.3793  295676
+herald_diff                       0.2803  295676
+ elder_diff                       0.0765  295676
+
+============================================================
+NOTABLE GAMES
+============================================================
+              category       match_id                                    detail
+          longest_game NA1_5637488067                                  68.8 min
+         shortest_game NA1_5638699608                                  15.0 min
+biggest_15min_comeback NA1_5638372198 overcame a 10707g deficit at 15min to win
+
+============================================================
+ROLE STATS
+============================================================
+role  avg_kills  avg_deaths  avg_assists  kda_ratio  avg_cs  avg_gold
+ top       5.93        6.22         5.48       1.83   198.2   12023.0
+  jg       7.36        5.98         7.92       2.56   194.2   13070.0
+ mid       7.33        6.20         6.59       2.25   195.6   12259.0
+ bot       7.72        6.55         7.32       2.30   206.3   13838.0
+ sup       2.85        6.35        13.72       2.61    38.7    9291.0
+
+============================================================
+PATCH BREAKDOWN
+============================================================
+patch  games  team_100_win_rate  avg_duration_min
+16.17   9596              0.495              29.3
+
+============================================================
+TOP 15 MOST PICKED CHAMPIONS
+============================================================
+ champion_id champion_name  picks  win_rate
+       222.0          Jinx   1827    0.5309
+       777.0          Yone   1645    0.5131
+        51.0       Caitlyn   1470    0.5224
+       147.0     Seraphine   1456    0.4924
+        99.0           Lux   1446    0.5090
+       202.0          Jhin   1431    0.4878
+       157.0         Yasuo   1381    0.5119
+        18.0      Tristana   1178    0.4983
+        21.0  Miss Fortune   1153    0.4831
+       145.0        Kai'Sa   1099    0.4804
+       517.0         Sylas   1085    0.4903
+       111.0      Nautilus   1076    0.4879
+        75.0         Nasus   1068    0.5197
+       103.0          Ahri   1048    0.5210
+       112.0        Viktor   1036    0.5280
+
+============================================================
+TOP 15 MOST BANNED CHAMPIONS
+============================================================
+ champion_id champion_name  times_banned
+          75         Nasus          4440
+         157         Yasuo          2733
+         555          Pyke          2556
+         800           Mel          2155
+         805         Locke          2091
+         147     Seraphine          2064
+          51       Caitlyn          2058
+          11     Master Yi          1960
+         134        Syndra          1717
+         238           Zed          1649
+          84         Akali          1635
+          17         Teemo          1601
+          35         Shaco          1570
+         104        Graves          1535
+         517         Sylas          1486
+
+============================================================
+SUMMONER SPELL POPULARITY
+============================================================
+ spell_id spell_name  times_taken
+      4.0      Flash        91983
+     14.0     Ignite        28868
+     11.0      Smite        19190
+     12.0   Teleport        15905
+     21.0    Barrier        13744
+      7.0       Heal         9019
+      3.0    Exhaust         6458
+      6.0      Ghost         5898
+      1.0    Cleanse          843
+
+============================================================
+RUNE TREE STYLE POPULARITY
+============================================================
+ style_id  style_name  times_taken
+   8000.0   Precision        40276
+   8200.0     Sorcery        22831
+   8100.0  Domination        16910
+   8400.0     Resolve        10508
+   8300.0 Inspiration         5429
+
+============================================================
+TOP 10 KEYSTONE RUNES
+============================================================
+ keystone_id        keystone_name  times_taken
+      8008.0         Lethal Tempo        14699
+      8010.0            Conqueror        13770
+      8112.0          Electrocute         9014
+      8229.0         Arcane Comet         7957
+      8005.0     Press the Attack         7418
+      8992.0        Unknown(8992)         5899
+      8214.0          Summon Aery         5681
+      8437.0 Grasp of the Undying         4784
+      9923.0       Hail of Blades         4452
+      8021.0       Fleet Footwork         4389
+
+Saved files to:
+C:\Users\Jonathan Zhao\Documents\GitHub\League of Legends Win Probability Model\data
+
+Saved: summary_stats.csv, champion_stats.csv, ban_stats.csv, role_stats.csv, objective_impact.csv, feature_correlations.csv, patch_stats.csv, notable_games.csv, summoner_spell_stats.csv, rune_style_stats.csv, keystone_stats.csv
+Finished: summary_stats.py
+Status: success
+Time: 0.69 minutes
+
+================================================================================
+Running: xgboost_engineering.py
+================================================================================
+Reading from database table: match_snapshots
+Writing: xgb_engineered\xgb_clean_dataset.parquet
+Done.
+Finished: xgboost_engineering.py
+Status: success
+Time: 0.72 minutes
+
+================================================================================
+Running: xgboost_train.py
+================================================================================
+Finished: xgboost_train.py
+Status: failed
+Time: 4.81 minutes

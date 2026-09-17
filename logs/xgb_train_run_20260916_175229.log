@@ -1,0 +1,1172 @@
+Logging full run output to: logs\xgb_train_run_20260916_175229.log
+Reading: xgb_engineered\xgb_clean_dataset.parquet
+Using existing split: results\shared_split_ids.npz
+Rows: 295852
+Matches: 9596
+Train matches: 6140
+Val matches: 1536
+Test matches: 1920
+Features: 154
+
+Feature columns:
+minute
+barons_diff
+barons_diff_delta_3min
+bot_assists_diff
+bot_assists_diff_delta_3min
+bot_base_diff
+bot_deaths_diff
+bot_deaths_diff_delta_3min
+bot_inhib_diff
+bot_inner_diff
+bot_jungle_minions_killed_diff
+bot_jungle_minions_killed_diff_delta_3min
+bot_kills_diff
+bot_kills_diff_delta_3min
+bot_level_diff
+bot_level_diff_delta_3min
+bot_minions_killed_diff
+bot_minions_killed_diff_delta_3min
+bot_outer_diff
+bot_solo_kills_diff
+bot_solo_kills_diff_delta_3min
+bot_total_gold_diff
+bot_total_gold_diff_delta_3min
+bot_wards_killed_diff
+bot_wards_killed_diff_delta_3min
+bot_wards_placed_diff
+bot_wards_placed_diff_delta_3min
+bot_xp_diff
+bot_xp_diff_delta_3min
+dragons_diff
+dragons_diff_delta_3min
+elders_diff
+elders_diff_delta_3min
+first_blood_diff
+first_tower_diff
+heralds_diff
+heralds_diff_delta_3min
+inhib_diff
+inhib_diff_delta_3min
+jg_assists_diff
+jg_assists_diff_delta_3min
+jg_deaths_diff
+jg_deaths_diff_delta_3min
+jg_jungle_minions_killed_diff
+jg_jungle_minions_killed_diff_delta_3min
+jg_kills_diff
+jg_kills_diff_delta_3min
+jg_level_diff
+jg_level_diff_delta_3min
+jg_minions_killed_diff
+jg_minions_killed_diff_delta_3min
+jg_solo_kills_diff
+jg_solo_kills_diff_delta_3min
+jg_total_gold_diff
+jg_total_gold_diff_delta_3min
+jg_wards_killed_diff
+jg_wards_killed_diff_delta_3min
+jg_wards_placed_diff
+jg_wards_placed_diff_delta_3min
+jg_xp_diff
+jg_xp_diff_delta_3min
+mid_assists_diff
+mid_assists_diff_delta_3min
+mid_base_diff
+mid_deaths_diff
+mid_deaths_diff_delta_3min
+mid_inhib_diff
+mid_inner_diff
+mid_jungle_minions_killed_diff
+mid_jungle_minions_killed_diff_delta_3min
+mid_kills_diff
+mid_kills_diff_delta_3min
+mid_level_diff
+mid_level_diff_delta_3min
+mid_minions_killed_diff
+mid_minions_killed_diff_delta_3min
+mid_outer_diff
+mid_solo_kills_diff
+mid_solo_kills_diff_delta_3min
+mid_total_gold_diff
+mid_total_gold_diff_delta_3min
+mid_wards_killed_diff
+mid_wards_killed_diff_delta_3min
+mid_wards_placed_diff
+mid_wards_placed_diff_delta_3min
+mid_xp_diff
+mid_xp_diff_delta_3min
+nexus_towers_diff
+plates_diff
+plates_diff_delta_3min
+sup_assists_diff
+sup_assists_diff_delta_3min
+sup_deaths_diff
+sup_deaths_diff_delta_3min
+sup_jungle_minions_killed_diff
+sup_jungle_minions_killed_diff_delta_3min
+sup_kills_diff
+sup_kills_diff_delta_3min
+sup_level_diff
+sup_level_diff_delta_3min
+sup_minions_killed_diff
+sup_minions_killed_diff_delta_3min
+sup_solo_kills_diff
+sup_solo_kills_diff_delta_3min
+sup_total_gold_diff
+sup_total_gold_diff_delta_3min
+sup_wards_killed_diff
+sup_wards_killed_diff_delta_3min
+sup_wards_placed_diff
+sup_wards_placed_diff_delta_3min
+sup_xp_diff
+sup_xp_diff_delta_3min
+team_assists_diff
+team_assists_diff_delta_3min
+team_damage_done_to_champions_diff
+team_damage_done_to_champions_diff_delta_3min
+team_deaths_diff
+team_deaths_diff_delta_3min
+team_kills_diff
+team_kills_diff_delta_3min
+team_minions_killed_diff
+team_minions_killed_diff_delta_3min
+team_total_gold_diff
+team_total_gold_diff_delta_3min
+team_xp_diff
+team_xp_diff_delta_3min
+top_assists_diff
+top_assists_diff_delta_3min
+top_base_diff
+top_deaths_diff
+top_deaths_diff_delta_3min
+top_inhib_diff
+top_inner_diff
+top_jungle_minions_killed_diff
+top_jungle_minions_killed_diff_delta_3min
+top_kills_diff
+top_kills_diff_delta_3min
+top_level_diff
+top_level_diff_delta_3min
+top_minions_killed_diff
+top_minions_killed_diff_delta_3min
+top_outer_diff
+top_solo_kills_diff
+top_solo_kills_diff_delta_3min
+top_total_gold_diff
+top_total_gold_diff_delta_3min
+top_wards_killed_diff
+top_wards_killed_diff_delta_3min
+top_wards_placed_diff
+top_wards_placed_diff_delta_3min
+top_xp_diff
+top_xp_diff_delta_3min
+tower_diff
+tower_diff_delta_3min
+
+Majority-class baseline accuracy: 0.5113
+
+Total configs: 192
+
+================================================================================
+Config 1/192
+{'max_depth': 3, 'learning_rate': 0.01, 'subsample': 0.6, 'colsample_bytree': 0.7}
+best_iteration=598 val_auc=0.8099 val_log_loss=0.5244 val_accuracy=0.7205 val_brier=0.1775
+
+================================================================================
+Config 2/192
+{'max_depth': 3, 'learning_rate': 0.01, 'subsample': 0.6, 'colsample_bytree': 0.85}
+best_iteration=597 val_auc=0.8100 val_log_loss=0.5243 val_accuracy=0.7207 val_brier=0.1775
+
+================================================================================
+Config 3/192
+{'max_depth': 3, 'learning_rate': 0.01, 'subsample': 0.6, 'colsample_bytree': 1.0}
+best_iteration=599 val_auc=0.8099 val_log_loss=0.5244 val_accuracy=0.7203 val_brier=0.1775
+
+================================================================================
+Config 4/192
+{'max_depth': 3, 'learning_rate': 0.01, 'subsample': 0.7, 'colsample_bytree': 0.7}
+best_iteration=585 val_auc=0.8100 val_log_loss=0.5244 val_accuracy=0.7204 val_brier=0.1775
+
+================================================================================
+Config 5/192
+{'max_depth': 3, 'learning_rate': 0.01, 'subsample': 0.7, 'colsample_bytree': 0.85}
+best_iteration=599 val_auc=0.8101 val_log_loss=0.5242 val_accuracy=0.7209 val_brier=0.1774
+
+================================================================================
+Config 6/192
+{'max_depth': 3, 'learning_rate': 0.01, 'subsample': 0.7, 'colsample_bytree': 1.0}
+best_iteration=599 val_auc=0.8099 val_log_loss=0.5244 val_accuracy=0.7203 val_brier=0.1775
+
+================================================================================
+Config 7/192
+{'max_depth': 3, 'learning_rate': 0.01, 'subsample': 0.85, 'colsample_bytree': 0.7}
+best_iteration=597 val_auc=0.8099 val_log_loss=0.5244 val_accuracy=0.7208 val_brier=0.1775
+
+================================================================================
+Config 8/192
+{'max_depth': 3, 'learning_rate': 0.01, 'subsample': 0.85, 'colsample_bytree': 0.85}
+best_iteration=587 val_auc=0.8099 val_log_loss=0.5245 val_accuracy=0.7203 val_brier=0.1775
+
+================================================================================
+Config 9/192
+{'max_depth': 3, 'learning_rate': 0.01, 'subsample': 0.85, 'colsample_bytree': 1.0}
+best_iteration=589 val_auc=0.8098 val_log_loss=0.5245 val_accuracy=0.7206 val_brier=0.1775
+
+================================================================================
+Config 10/192
+{'max_depth': 3, 'learning_rate': 0.01, 'subsample': 1.0, 'colsample_bytree': 0.7}
+best_iteration=599 val_auc=0.8098 val_log_loss=0.5245 val_accuracy=0.7200 val_brier=0.1775
+
+================================================================================
+Config 11/192
+{'max_depth': 3, 'learning_rate': 0.01, 'subsample': 1.0, 'colsample_bytree': 0.85}
+best_iteration=599 val_auc=0.8097 val_log_loss=0.5245 val_accuracy=0.7201 val_brier=0.1776
+
+================================================================================
+Config 12/192
+{'max_depth': 3, 'learning_rate': 0.01, 'subsample': 1.0, 'colsample_bytree': 1.0}
+best_iteration=599 val_auc=0.8097 val_log_loss=0.5246 val_accuracy=0.7204 val_brier=0.1776
+
+================================================================================
+Config 13/192
+{'max_depth': 3, 'learning_rate': 0.03, 'subsample': 0.6, 'colsample_bytree': 0.7}
+best_iteration=259 val_auc=0.8103 val_log_loss=0.5238 val_accuracy=0.7207 val_brier=0.1773
+
+================================================================================
+Config 14/192
+{'max_depth': 3, 'learning_rate': 0.03, 'subsample': 0.6, 'colsample_bytree': 0.85}
+best_iteration=252 val_auc=0.8102 val_log_loss=0.5239 val_accuracy=0.7211 val_brier=0.1774
+
+================================================================================
+Config 15/192
+{'max_depth': 3, 'learning_rate': 0.03, 'subsample': 0.6, 'colsample_bytree': 1.0}
+best_iteration=290 val_auc=0.8100 val_log_loss=0.5240 val_accuracy=0.7202 val_brier=0.1774
+
+================================================================================
+Config 16/192
+{'max_depth': 3, 'learning_rate': 0.03, 'subsample': 0.7, 'colsample_bytree': 0.7}
+best_iteration=251 val_auc=0.8101 val_log_loss=0.5239 val_accuracy=0.7207 val_brier=0.1773
+
+================================================================================
+Config 17/192
+{'max_depth': 3, 'learning_rate': 0.03, 'subsample': 0.7, 'colsample_bytree': 0.85}
+best_iteration=265 val_auc=0.8100 val_log_loss=0.5239 val_accuracy=0.7205 val_brier=0.1774
+
+================================================================================
+Config 18/192
+{'max_depth': 3, 'learning_rate': 0.03, 'subsample': 0.7, 'colsample_bytree': 1.0}
+best_iteration=262 val_auc=0.8101 val_log_loss=0.5240 val_accuracy=0.7205 val_brier=0.1774
+
+================================================================================
+Config 19/192
+{'max_depth': 3, 'learning_rate': 0.03, 'subsample': 0.85, 'colsample_bytree': 0.7}
+best_iteration=262 val_auc=0.8102 val_log_loss=0.5238 val_accuracy=0.7201 val_brier=0.1773
+
+================================================================================
+Config 20/192
+{'max_depth': 3, 'learning_rate': 0.03, 'subsample': 0.85, 'colsample_bytree': 0.85}
+best_iteration=267 val_auc=0.8099 val_log_loss=0.5240 val_accuracy=0.7205 val_brier=0.1774
+
+================================================================================
+Config 21/192
+{'max_depth': 3, 'learning_rate': 0.03, 'subsample': 0.85, 'colsample_bytree': 1.0}
+best_iteration=239 val_auc=0.8099 val_log_loss=0.5242 val_accuracy=0.7205 val_brier=0.1775
+
+================================================================================
+Config 22/192
+{'max_depth': 3, 'learning_rate': 0.03, 'subsample': 1.0, 'colsample_bytree': 0.7}
+best_iteration=275 val_auc=0.8099 val_log_loss=0.5240 val_accuracy=0.7202 val_brier=0.1774
+
+================================================================================
+Config 23/192
+{'max_depth': 3, 'learning_rate': 0.03, 'subsample': 1.0, 'colsample_bytree': 0.85}
+best_iteration=236 val_auc=0.8099 val_log_loss=0.5241 val_accuracy=0.7202 val_brier=0.1774
+
+================================================================================
+Config 24/192
+{'max_depth': 3, 'learning_rate': 0.03, 'subsample': 1.0, 'colsample_bytree': 1.0}
+best_iteration=249 val_auc=0.8098 val_log_loss=0.5242 val_accuracy=0.7200 val_brier=0.1775
+
+================================================================================
+Config 25/192
+{'max_depth': 3, 'learning_rate': 0.05, 'subsample': 0.6, 'colsample_bytree': 0.7}
+best_iteration=137 val_auc=0.8102 val_log_loss=0.5239 val_accuracy=0.7203 val_brier=0.1773
+
+================================================================================
+Config 26/192
+{'max_depth': 3, 'learning_rate': 0.05, 'subsample': 0.6, 'colsample_bytree': 0.85}
+best_iteration=149 val_auc=0.8099 val_log_loss=0.5241 val_accuracy=0.7200 val_brier=0.1774
+
+================================================================================
+Config 27/192
+{'max_depth': 3, 'learning_rate': 0.05, 'subsample': 0.6, 'colsample_bytree': 1.0}
+best_iteration=141 val_auc=0.8102 val_log_loss=0.5239 val_accuracy=0.7203 val_brier=0.1773
+
+================================================================================
+Config 28/192
+{'max_depth': 3, 'learning_rate': 0.05, 'subsample': 0.7, 'colsample_bytree': 0.7}
+best_iteration=158 val_auc=0.8099 val_log_loss=0.5240 val_accuracy=0.7204 val_brier=0.1774
+
+================================================================================
+Config 29/192
+{'max_depth': 3, 'learning_rate': 0.05, 'subsample': 0.7, 'colsample_bytree': 0.85}
+best_iteration=180 val_auc=0.8098 val_log_loss=0.5242 val_accuracy=0.7196 val_brier=0.1775
+
+================================================================================
+Config 30/192
+{'max_depth': 3, 'learning_rate': 0.05, 'subsample': 0.7, 'colsample_bytree': 1.0}
+best_iteration=167 val_auc=0.8099 val_log_loss=0.5242 val_accuracy=0.7200 val_brier=0.1775
+
+================================================================================
+Config 31/192
+{'max_depth': 3, 'learning_rate': 0.05, 'subsample': 0.85, 'colsample_bytree': 0.7}
+best_iteration=156 val_auc=0.8099 val_log_loss=0.5241 val_accuracy=0.7203 val_brier=0.1774
+
+================================================================================
+Config 32/192
+{'max_depth': 3, 'learning_rate': 0.05, 'subsample': 0.85, 'colsample_bytree': 0.85}
+best_iteration=150 val_auc=0.8100 val_log_loss=0.5239 val_accuracy=0.7199 val_brier=0.1774
+
+================================================================================
+Config 33/192
+{'max_depth': 3, 'learning_rate': 0.05, 'subsample': 0.85, 'colsample_bytree': 1.0}
+best_iteration=150 val_auc=0.8097 val_log_loss=0.5243 val_accuracy=0.7196 val_brier=0.1775
+
+================================================================================
+Config 34/192
+{'max_depth': 3, 'learning_rate': 0.05, 'subsample': 1.0, 'colsample_bytree': 0.7}
+best_iteration=157 val_auc=0.8098 val_log_loss=0.5241 val_accuracy=0.7197 val_brier=0.1774
+
+================================================================================
+Config 35/192
+{'max_depth': 3, 'learning_rate': 0.05, 'subsample': 1.0, 'colsample_bytree': 0.85}
+best_iteration=144 val_auc=0.8098 val_log_loss=0.5242 val_accuracy=0.7200 val_brier=0.1775
+
+================================================================================
+Config 36/192
+{'max_depth': 3, 'learning_rate': 0.05, 'subsample': 1.0, 'colsample_bytree': 1.0}
+best_iteration=147 val_auc=0.8097 val_log_loss=0.5243 val_accuracy=0.7200 val_brier=0.1776
+
+================================================================================
+Config 37/192
+{'max_depth': 3, 'learning_rate': 0.1, 'subsample': 0.6, 'colsample_bytree': 0.7}
+best_iteration=88 val_auc=0.8102 val_log_loss=0.5239 val_accuracy=0.7213 val_brier=0.1774
+
+================================================================================
+Config 38/192
+{'max_depth': 3, 'learning_rate': 0.1, 'subsample': 0.6, 'colsample_bytree': 0.85}
+best_iteration=126 val_auc=0.8103 val_log_loss=0.5239 val_accuracy=0.7201 val_brier=0.1773
+
+================================================================================
+Config 39/192
+{'max_depth': 3, 'learning_rate': 0.1, 'subsample': 0.6, 'colsample_bytree': 1.0}
+best_iteration=85 val_auc=0.8104 val_log_loss=0.5236 val_accuracy=0.7205 val_brier=0.1773
+
+================================================================================
+Config 40/192
+{'max_depth': 3, 'learning_rate': 0.1, 'subsample': 0.7, 'colsample_bytree': 0.7}
+best_iteration=85 val_auc=0.8099 val_log_loss=0.5244 val_accuracy=0.7200 val_brier=0.1775
+
+================================================================================
+Config 41/192
+{'max_depth': 3, 'learning_rate': 0.1, 'subsample': 0.7, 'colsample_bytree': 0.85}
+best_iteration=85 val_auc=0.8101 val_log_loss=0.5240 val_accuracy=0.7203 val_brier=0.1774
+
+================================================================================
+Config 42/192
+{'max_depth': 3, 'learning_rate': 0.1, 'subsample': 0.7, 'colsample_bytree': 1.0}
+best_iteration=85 val_auc=0.8102 val_log_loss=0.5237 val_accuracy=0.7197 val_brier=0.1773
+
+================================================================================
+Config 43/192
+{'max_depth': 3, 'learning_rate': 0.1, 'subsample': 0.85, 'colsample_bytree': 0.7}
+best_iteration=89 val_auc=0.8101 val_log_loss=0.5238 val_accuracy=0.7202 val_brier=0.1774
+
+================================================================================
+Config 44/192
+{'max_depth': 3, 'learning_rate': 0.1, 'subsample': 0.85, 'colsample_bytree': 0.85}
+best_iteration=87 val_auc=0.8098 val_log_loss=0.5243 val_accuracy=0.7203 val_brier=0.1775
+
+================================================================================
+Config 45/192
+{'max_depth': 3, 'learning_rate': 0.1, 'subsample': 0.85, 'colsample_bytree': 1.0}
+best_iteration=72 val_auc=0.8102 val_log_loss=0.5240 val_accuracy=0.7199 val_brier=0.1774
+
+================================================================================
+Config 46/192
+{'max_depth': 3, 'learning_rate': 0.1, 'subsample': 1.0, 'colsample_bytree': 0.7}
+best_iteration=72 val_auc=0.8097 val_log_loss=0.5244 val_accuracy=0.7202 val_brier=0.1775
+
+================================================================================
+Config 47/192
+{'max_depth': 3, 'learning_rate': 0.1, 'subsample': 1.0, 'colsample_bytree': 0.85}
+best_iteration=70 val_auc=0.8096 val_log_loss=0.5244 val_accuracy=0.7200 val_brier=0.1776
+
+================================================================================
+Config 48/192
+{'max_depth': 3, 'learning_rate': 0.1, 'subsample': 1.0, 'colsample_bytree': 1.0}
+best_iteration=67 val_auc=0.8097 val_log_loss=0.5244 val_accuracy=0.7201 val_brier=0.1776
+
+================================================================================
+Config 49/192
+{'max_depth': 4, 'learning_rate': 0.01, 'subsample': 0.6, 'colsample_bytree': 0.7}
+best_iteration=584 val_auc=0.8104 val_log_loss=0.5237 val_accuracy=0.7214 val_brier=0.1772
+
+================================================================================
+Config 50/192
+{'max_depth': 4, 'learning_rate': 0.01, 'subsample': 0.6, 'colsample_bytree': 0.85}
+best_iteration=598 val_auc=0.8103 val_log_loss=0.5237 val_accuracy=0.7211 val_brier=0.1772
+
+================================================================================
+Config 51/192
+{'max_depth': 4, 'learning_rate': 0.01, 'subsample': 0.6, 'colsample_bytree': 1.0}
+best_iteration=583 val_auc=0.8102 val_log_loss=0.5240 val_accuracy=0.7203 val_brier=0.1773
+
+================================================================================
+Config 52/192
+{'max_depth': 4, 'learning_rate': 0.01, 'subsample': 0.7, 'colsample_bytree': 0.7}
+best_iteration=599 val_auc=0.8103 val_log_loss=0.5238 val_accuracy=0.7212 val_brier=0.1773
+
+================================================================================
+Config 53/192
+{'max_depth': 4, 'learning_rate': 0.01, 'subsample': 0.7, 'colsample_bytree': 0.85}
+best_iteration=599 val_auc=0.8103 val_log_loss=0.5238 val_accuracy=0.7208 val_brier=0.1773
+
+================================================================================
+Config 54/192
+{'max_depth': 4, 'learning_rate': 0.01, 'subsample': 0.7, 'colsample_bytree': 1.0}
+best_iteration=599 val_auc=0.8101 val_log_loss=0.5240 val_accuracy=0.7198 val_brier=0.1774
+
+================================================================================
+Config 55/192
+{'max_depth': 4, 'learning_rate': 0.01, 'subsample': 0.85, 'colsample_bytree': 0.7}
+best_iteration=593 val_auc=0.8103 val_log_loss=0.5238 val_accuracy=0.7211 val_brier=0.1773
+
+================================================================================
+Config 56/192
+{'max_depth': 4, 'learning_rate': 0.01, 'subsample': 0.85, 'colsample_bytree': 0.85}
+best_iteration=588 val_auc=0.8101 val_log_loss=0.5240 val_accuracy=0.7206 val_brier=0.1774
+
+================================================================================
+Config 57/192
+{'max_depth': 4, 'learning_rate': 0.01, 'subsample': 0.85, 'colsample_bytree': 1.0}
+best_iteration=589 val_auc=0.8100 val_log_loss=0.5241 val_accuracy=0.7200 val_brier=0.1774
+
+================================================================================
+Config 58/192
+{'max_depth': 4, 'learning_rate': 0.01, 'subsample': 1.0, 'colsample_bytree': 0.7}
+best_iteration=598 val_auc=0.8100 val_log_loss=0.5240 val_accuracy=0.7214 val_brier=0.1774
+
+================================================================================
+Config 59/192
+{'max_depth': 4, 'learning_rate': 0.01, 'subsample': 1.0, 'colsample_bytree': 0.85}
+best_iteration=590 val_auc=0.8100 val_log_loss=0.5240 val_accuracy=0.7206 val_brier=0.1774
+
+================================================================================
+Config 60/192
+{'max_depth': 4, 'learning_rate': 0.01, 'subsample': 1.0, 'colsample_bytree': 1.0}
+best_iteration=596 val_auc=0.8099 val_log_loss=0.5241 val_accuracy=0.7199 val_brier=0.1774
+
+================================================================================
+Config 61/192
+{'max_depth': 4, 'learning_rate': 0.03, 'subsample': 0.6, 'colsample_bytree': 0.7}
+best_iteration=194 val_auc=0.8105 val_log_loss=0.5235 val_accuracy=0.7203 val_brier=0.1772
+
+================================================================================
+Config 62/192
+{'max_depth': 4, 'learning_rate': 0.03, 'subsample': 0.6, 'colsample_bytree': 0.85}
+best_iteration=191 val_auc=0.8103 val_log_loss=0.5238 val_accuracy=0.7202 val_brier=0.1773
+
+================================================================================
+Config 63/192
+{'max_depth': 4, 'learning_rate': 0.03, 'subsample': 0.6, 'colsample_bytree': 1.0}
+best_iteration=256 val_auc=0.8102 val_log_loss=0.5239 val_accuracy=0.7201 val_brier=0.1774
+
+================================================================================
+Config 64/192
+{'max_depth': 4, 'learning_rate': 0.03, 'subsample': 0.7, 'colsample_bytree': 0.7}
+best_iteration=262 val_auc=0.8104 val_log_loss=0.5234 val_accuracy=0.7206 val_brier=0.1772
+
+================================================================================
+Config 65/192
+{'max_depth': 4, 'learning_rate': 0.03, 'subsample': 0.7, 'colsample_bytree': 0.85}
+best_iteration=222 val_auc=0.8101 val_log_loss=0.5239 val_accuracy=0.7200 val_brier=0.1774
+
+================================================================================
+Config 66/192
+{'max_depth': 4, 'learning_rate': 0.03, 'subsample': 0.7, 'colsample_bytree': 1.0}
+best_iteration=191 val_auc=0.8100 val_log_loss=0.5242 val_accuracy=0.7197 val_brier=0.1774
+
+================================================================================
+Config 67/192
+{'max_depth': 4, 'learning_rate': 0.03, 'subsample': 0.85, 'colsample_bytree': 0.7}
+best_iteration=231 val_auc=0.8102 val_log_loss=0.5237 val_accuracy=0.7206 val_brier=0.1773
+
+================================================================================
+Config 68/192
+{'max_depth': 4, 'learning_rate': 0.03, 'subsample': 0.85, 'colsample_bytree': 0.85}
+best_iteration=244 val_auc=0.8101 val_log_loss=0.5239 val_accuracy=0.7205 val_brier=0.1773
+
+================================================================================
+Config 69/192
+{'max_depth': 4, 'learning_rate': 0.03, 'subsample': 0.85, 'colsample_bytree': 1.0}
+best_iteration=239 val_auc=0.8100 val_log_loss=0.5241 val_accuracy=0.7197 val_brier=0.1774
+
+================================================================================
+Config 70/192
+{'max_depth': 4, 'learning_rate': 0.03, 'subsample': 1.0, 'colsample_bytree': 0.7}
+best_iteration=214 val_auc=0.8101 val_log_loss=0.5238 val_accuracy=0.7203 val_brier=0.1773
+
+================================================================================
+Config 71/192
+{'max_depth': 4, 'learning_rate': 0.03, 'subsample': 1.0, 'colsample_bytree': 0.85}
+best_iteration=199 val_auc=0.8100 val_log_loss=0.5239 val_accuracy=0.7209 val_brier=0.1774
+
+================================================================================
+Config 72/192
+{'max_depth': 4, 'learning_rate': 0.03, 'subsample': 1.0, 'colsample_bytree': 1.0}
+best_iteration=217 val_auc=0.8099 val_log_loss=0.5240 val_accuracy=0.7200 val_brier=0.1774
+
+================================================================================
+Config 73/192
+{'max_depth': 4, 'learning_rate': 0.05, 'subsample': 0.6, 'colsample_bytree': 0.7}
+best_iteration=135 val_auc=0.8107 val_log_loss=0.5233 val_accuracy=0.7206 val_brier=0.1771
+
+================================================================================
+Config 74/192
+{'max_depth': 4, 'learning_rate': 0.05, 'subsample': 0.6, 'colsample_bytree': 0.85}
+best_iteration=136 val_auc=0.8108 val_log_loss=0.5234 val_accuracy=0.7210 val_brier=0.1771
+
+================================================================================
+Config 75/192
+{'max_depth': 4, 'learning_rate': 0.05, 'subsample': 0.6, 'colsample_bytree': 1.0}
+best_iteration=124 val_auc=0.8104 val_log_loss=0.5237 val_accuracy=0.7203 val_brier=0.1773
+
+================================================================================
+Config 76/192
+{'max_depth': 4, 'learning_rate': 0.05, 'subsample': 0.7, 'colsample_bytree': 0.7}
+best_iteration=136 val_auc=0.8104 val_log_loss=0.5235 val_accuracy=0.7209 val_brier=0.1772
+
+================================================================================
+Config 77/192
+{'max_depth': 4, 'learning_rate': 0.05, 'subsample': 0.7, 'colsample_bytree': 0.85}
+best_iteration=124 val_auc=0.8101 val_log_loss=0.5240 val_accuracy=0.7199 val_brier=0.1774
+
+================================================================================
+Config 78/192
+{'max_depth': 4, 'learning_rate': 0.05, 'subsample': 0.7, 'colsample_bytree': 1.0}
+best_iteration=121 val_auc=0.8100 val_log_loss=0.5240 val_accuracy=0.7199 val_brier=0.1774
+
+================================================================================
+Config 79/192
+{'max_depth': 4, 'learning_rate': 0.05, 'subsample': 0.85, 'colsample_bytree': 0.7}
+best_iteration=114 val_auc=0.8103 val_log_loss=0.5237 val_accuracy=0.7205 val_brier=0.1773
+
+================================================================================
+Config 80/192
+{'max_depth': 4, 'learning_rate': 0.05, 'subsample': 0.85, 'colsample_bytree': 0.85}
+best_iteration=122 val_auc=0.8100 val_log_loss=0.5242 val_accuracy=0.7204 val_brier=0.1774
+
+================================================================================
+Config 81/192
+{'max_depth': 4, 'learning_rate': 0.05, 'subsample': 0.85, 'colsample_bytree': 1.0}
+best_iteration=149 val_auc=0.8101 val_log_loss=0.5240 val_accuracy=0.7195 val_brier=0.1774
+
+================================================================================
+Config 82/192
+{'max_depth': 4, 'learning_rate': 0.05, 'subsample': 1.0, 'colsample_bytree': 0.7}
+best_iteration=115 val_auc=0.8103 val_log_loss=0.5238 val_accuracy=0.7210 val_brier=0.1773
+
+================================================================================
+Config 83/192
+{'max_depth': 4, 'learning_rate': 0.05, 'subsample': 1.0, 'colsample_bytree': 0.85}
+best_iteration=118 val_auc=0.8099 val_log_loss=0.5241 val_accuracy=0.7201 val_brier=0.1774
+
+================================================================================
+Config 84/192
+{'max_depth': 4, 'learning_rate': 0.05, 'subsample': 1.0, 'colsample_bytree': 1.0}
+best_iteration=128 val_auc=0.8100 val_log_loss=0.5241 val_accuracy=0.7202 val_brier=0.1774
+
+================================================================================
+Config 85/192
+{'max_depth': 4, 'learning_rate': 0.1, 'subsample': 0.6, 'colsample_bytree': 0.7}
+best_iteration=71 val_auc=0.8104 val_log_loss=0.5239 val_accuracy=0.7208 val_brier=0.1773
+
+================================================================================
+Config 86/192
+{'max_depth': 4, 'learning_rate': 0.1, 'subsample': 0.6, 'colsample_bytree': 0.85}
+best_iteration=66 val_auc=0.8102 val_log_loss=0.5240 val_accuracy=0.7202 val_brier=0.1774
+
+================================================================================
+Config 87/192
+{'max_depth': 4, 'learning_rate': 0.1, 'subsample': 0.6, 'colsample_bytree': 1.0}
+best_iteration=91 val_auc=0.8101 val_log_loss=0.5242 val_accuracy=0.7201 val_brier=0.1774
+
+================================================================================
+Config 88/192
+{'max_depth': 4, 'learning_rate': 0.1, 'subsample': 0.7, 'colsample_bytree': 0.7}
+best_iteration=62 val_auc=0.8104 val_log_loss=0.5236 val_accuracy=0.7210 val_brier=0.1772
+
+================================================================================
+Config 89/192
+{'max_depth': 4, 'learning_rate': 0.1, 'subsample': 0.7, 'colsample_bytree': 0.85}
+best_iteration=94 val_auc=0.8101 val_log_loss=0.5241 val_accuracy=0.7204 val_brier=0.1774
+
+================================================================================
+Config 90/192
+{'max_depth': 4, 'learning_rate': 0.1, 'subsample': 0.7, 'colsample_bytree': 1.0}
+best_iteration=83 val_auc=0.8100 val_log_loss=0.5240 val_accuracy=0.7197 val_brier=0.1774
+
+================================================================================
+Config 91/192
+{'max_depth': 4, 'learning_rate': 0.1, 'subsample': 0.85, 'colsample_bytree': 0.7}
+best_iteration=62 val_auc=0.8100 val_log_loss=0.5239 val_accuracy=0.7203 val_brier=0.1773
+
+================================================================================
+Config 92/192
+{'max_depth': 4, 'learning_rate': 0.1, 'subsample': 0.85, 'colsample_bytree': 0.85}
+best_iteration=70 val_auc=0.8099 val_log_loss=0.5240 val_accuracy=0.7200 val_brier=0.1774
+
+================================================================================
+Config 93/192
+{'max_depth': 4, 'learning_rate': 0.1, 'subsample': 0.85, 'colsample_bytree': 1.0}
+best_iteration=62 val_auc=0.8103 val_log_loss=0.5239 val_accuracy=0.7197 val_brier=0.1773
+
+================================================================================
+Config 94/192
+{'max_depth': 4, 'learning_rate': 0.1, 'subsample': 1.0, 'colsample_bytree': 0.7}
+best_iteration=83 val_auc=0.8098 val_log_loss=0.5243 val_accuracy=0.7213 val_brier=0.1775
+
+================================================================================
+Config 95/192
+{'max_depth': 4, 'learning_rate': 0.1, 'subsample': 1.0, 'colsample_bytree': 0.85}
+best_iteration=78 val_auc=0.8097 val_log_loss=0.5243 val_accuracy=0.7196 val_brier=0.1776
+
+================================================================================
+Config 96/192
+{'max_depth': 4, 'learning_rate': 0.1, 'subsample': 1.0, 'colsample_bytree': 1.0}
+best_iteration=66 val_auc=0.8101 val_log_loss=0.5240 val_accuracy=0.7205 val_brier=0.1774
+
+================================================================================
+Config 97/192
+{'max_depth': 6, 'learning_rate': 0.01, 'subsample': 0.6, 'colsample_bytree': 0.7}
+best_iteration=541 val_auc=0.8106 val_log_loss=0.5234 val_accuracy=0.7216 val_brier=0.1771
+
+================================================================================
+Config 98/192
+{'max_depth': 6, 'learning_rate': 0.01, 'subsample': 0.6, 'colsample_bytree': 0.85}
+best_iteration=538 val_auc=0.8105 val_log_loss=0.5234 val_accuracy=0.7209 val_brier=0.1772
+
+================================================================================
+Config 99/192
+{'max_depth': 6, 'learning_rate': 0.01, 'subsample': 0.6, 'colsample_bytree': 1.0}
+best_iteration=579 val_auc=0.8104 val_log_loss=0.5236 val_accuracy=0.7209 val_brier=0.1772
+
+================================================================================
+Config 100/192
+{'max_depth': 6, 'learning_rate': 0.01, 'subsample': 0.7, 'colsample_bytree': 0.7}
+best_iteration=553 val_auc=0.8107 val_log_loss=0.5233 val_accuracy=0.7214 val_brier=0.1771
+
+================================================================================
+Config 101/192
+{'max_depth': 6, 'learning_rate': 0.01, 'subsample': 0.7, 'colsample_bytree': 0.85}
+best_iteration=599 val_auc=0.8105 val_log_loss=0.5234 val_accuracy=0.7208 val_brier=0.1772
+
+================================================================================
+Config 102/192
+{'max_depth': 6, 'learning_rate': 0.01, 'subsample': 0.7, 'colsample_bytree': 1.0}
+best_iteration=599 val_auc=0.8104 val_log_loss=0.5236 val_accuracy=0.7210 val_brier=0.1772
+
+================================================================================
+Config 103/192
+{'max_depth': 6, 'learning_rate': 0.01, 'subsample': 0.85, 'colsample_bytree': 0.7}
+best_iteration=576 val_auc=0.8105 val_log_loss=0.5234 val_accuracy=0.7218 val_brier=0.1772
+
+================================================================================
+Config 104/192
+{'max_depth': 6, 'learning_rate': 0.01, 'subsample': 0.85, 'colsample_bytree': 0.85}
+best_iteration=589 val_auc=0.8103 val_log_loss=0.5236 val_accuracy=0.7209 val_brier=0.1772
+
+================================================================================
+Config 105/192
+{'max_depth': 6, 'learning_rate': 0.01, 'subsample': 0.85, 'colsample_bytree': 1.0}
+best_iteration=546 val_auc=0.8103 val_log_loss=0.5237 val_accuracy=0.7204 val_brier=0.1773
+
+================================================================================
+Config 106/192
+{'max_depth': 6, 'learning_rate': 0.01, 'subsample': 1.0, 'colsample_bytree': 0.7}
+best_iteration=563 val_auc=0.8103 val_log_loss=0.5237 val_accuracy=0.7217 val_brier=0.1772
+
+================================================================================
+Config 107/192
+{'max_depth': 6, 'learning_rate': 0.01, 'subsample': 1.0, 'colsample_bytree': 0.85}
+best_iteration=546 val_auc=0.8102 val_log_loss=0.5238 val_accuracy=0.7210 val_brier=0.1773
+
+================================================================================
+Config 108/192
+{'max_depth': 6, 'learning_rate': 0.01, 'subsample': 1.0, 'colsample_bytree': 1.0}
+best_iteration=554 val_auc=0.8101 val_log_loss=0.5239 val_accuracy=0.7204 val_brier=0.1774
+
+================================================================================
+Config 109/192
+{'max_depth': 6, 'learning_rate': 0.03, 'subsample': 0.6, 'colsample_bytree': 0.7}
+best_iteration=194 val_auc=0.8107 val_log_loss=0.5232 val_accuracy=0.7211 val_brier=0.1771
+
+================================================================================
+Config 110/192
+{'max_depth': 6, 'learning_rate': 0.03, 'subsample': 0.6, 'colsample_bytree': 0.85}
+best_iteration=191 val_auc=0.8104 val_log_loss=0.5235 val_accuracy=0.7206 val_brier=0.1772
+
+================================================================================
+Config 111/192
+{'max_depth': 6, 'learning_rate': 0.03, 'subsample': 0.6, 'colsample_bytree': 1.0}
+best_iteration=191 val_auc=0.8101 val_log_loss=0.5239 val_accuracy=0.7205 val_brier=0.1773
+
+================================================================================
+Config 112/192
+{'max_depth': 6, 'learning_rate': 0.03, 'subsample': 0.7, 'colsample_bytree': 0.7}
+best_iteration=180 val_auc=0.8107 val_log_loss=0.5233 val_accuracy=0.7207 val_brier=0.1771
+
+================================================================================
+Config 113/192
+{'max_depth': 6, 'learning_rate': 0.03, 'subsample': 0.7, 'colsample_bytree': 0.85}
+best_iteration=212 val_auc=0.8104 val_log_loss=0.5236 val_accuracy=0.7211 val_brier=0.1772
+
+================================================================================
+Config 114/192
+{'max_depth': 6, 'learning_rate': 0.03, 'subsample': 0.7, 'colsample_bytree': 1.0}
+best_iteration=196 val_auc=0.8102 val_log_loss=0.5238 val_accuracy=0.7206 val_brier=0.1773
+
+================================================================================
+Config 115/192
+{'max_depth': 6, 'learning_rate': 0.03, 'subsample': 0.85, 'colsample_bytree': 0.7}
+best_iteration=196 val_auc=0.8104 val_log_loss=0.5235 val_accuracy=0.7206 val_brier=0.1772
+
+================================================================================
+Config 116/192
+{'max_depth': 6, 'learning_rate': 0.03, 'subsample': 0.85, 'colsample_bytree': 0.85}
+best_iteration=196 val_auc=0.8101 val_log_loss=0.5239 val_accuracy=0.7204 val_brier=0.1773
+
+================================================================================
+Config 117/192
+{'max_depth': 6, 'learning_rate': 0.03, 'subsample': 0.85, 'colsample_bytree': 1.0}
+best_iteration=196 val_auc=0.8102 val_log_loss=0.5238 val_accuracy=0.7203 val_brier=0.1773
+
+================================================================================
+Config 118/192
+{'max_depth': 6, 'learning_rate': 0.03, 'subsample': 1.0, 'colsample_bytree': 0.7}
+best_iteration=202 val_auc=0.8103 val_log_loss=0.5236 val_accuracy=0.7211 val_brier=0.1772
+
+================================================================================
+Config 119/192
+{'max_depth': 6, 'learning_rate': 0.03, 'subsample': 1.0, 'colsample_bytree': 0.85}
+best_iteration=186 val_auc=0.8103 val_log_loss=0.5236 val_accuracy=0.7211 val_brier=0.1772
+
+================================================================================
+Config 120/192
+{'max_depth': 6, 'learning_rate': 0.03, 'subsample': 1.0, 'colsample_bytree': 1.0}
+best_iteration=179 val_auc=0.8100 val_log_loss=0.5240 val_accuracy=0.7207 val_brier=0.1774
+
+================================================================================
+Config 121/192
+{'max_depth': 6, 'learning_rate': 0.05, 'subsample': 0.6, 'colsample_bytree': 0.7}
+best_iteration=122 val_auc=0.8109 val_log_loss=0.5232 val_accuracy=0.7210 val_brier=0.1770
+
+================================================================================
+Config 122/192
+{'max_depth': 6, 'learning_rate': 0.05, 'subsample': 0.6, 'colsample_bytree': 0.85}
+best_iteration=124 val_auc=0.8106 val_log_loss=0.5233 val_accuracy=0.7216 val_brier=0.1771
+
+================================================================================
+Config 123/192
+{'max_depth': 6, 'learning_rate': 0.05, 'subsample': 0.6, 'colsample_bytree': 1.0}
+best_iteration=124 val_auc=0.8107 val_log_loss=0.5233 val_accuracy=0.7208 val_brier=0.1771
+
+================================================================================
+Config 124/192
+{'max_depth': 6, 'learning_rate': 0.05, 'subsample': 0.7, 'colsample_bytree': 0.7}
+best_iteration=110 val_auc=0.8105 val_log_loss=0.5235 val_accuracy=0.7210 val_brier=0.1771
+
+================================================================================
+Config 125/192
+{'max_depth': 6, 'learning_rate': 0.05, 'subsample': 0.7, 'colsample_bytree': 0.85}
+best_iteration=111 val_auc=0.8105 val_log_loss=0.5236 val_accuracy=0.7207 val_brier=0.1772
+
+================================================================================
+Config 126/192
+{'max_depth': 6, 'learning_rate': 0.05, 'subsample': 0.7, 'colsample_bytree': 1.0}
+best_iteration=111 val_auc=0.8104 val_log_loss=0.5235 val_accuracy=0.7203 val_brier=0.1772
+
+================================================================================
+Config 127/192
+{'max_depth': 6, 'learning_rate': 0.05, 'subsample': 0.85, 'colsample_bytree': 0.7}
+best_iteration=111 val_auc=0.8106 val_log_loss=0.5235 val_accuracy=0.7209 val_brier=0.1772
+
+================================================================================
+Config 128/192
+{'max_depth': 6, 'learning_rate': 0.05, 'subsample': 0.85, 'colsample_bytree': 0.85}
+best_iteration=131 val_auc=0.8103 val_log_loss=0.5235 val_accuracy=0.7199 val_brier=0.1772
+
+================================================================================
+Config 129/192
+{'max_depth': 6, 'learning_rate': 0.05, 'subsample': 0.85, 'colsample_bytree': 1.0}
+best_iteration=111 val_auc=0.8104 val_log_loss=0.5236 val_accuracy=0.7207 val_brier=0.1772
+
+================================================================================
+Config 130/192
+{'max_depth': 6, 'learning_rate': 0.05, 'subsample': 1.0, 'colsample_bytree': 0.7}
+best_iteration=123 val_auc=0.8104 val_log_loss=0.5235 val_accuracy=0.7210 val_brier=0.1772
+
+================================================================================
+Config 131/192
+{'max_depth': 6, 'learning_rate': 0.05, 'subsample': 1.0, 'colsample_bytree': 0.85}
+best_iteration=111 val_auc=0.8102 val_log_loss=0.5238 val_accuracy=0.7211 val_brier=0.1773
+
+================================================================================
+Config 132/192
+{'max_depth': 6, 'learning_rate': 0.05, 'subsample': 1.0, 'colsample_bytree': 1.0}
+best_iteration=112 val_auc=0.8101 val_log_loss=0.5239 val_accuracy=0.7209 val_brier=0.1773
+
+================================================================================
+Config 133/192
+{'max_depth': 6, 'learning_rate': 0.1, 'subsample': 0.6, 'colsample_bytree': 0.7}
+best_iteration=62 val_auc=0.8107 val_log_loss=0.5234 val_accuracy=0.7216 val_brier=0.1771
+
+================================================================================
+Config 134/192
+{'max_depth': 6, 'learning_rate': 0.1, 'subsample': 0.6, 'colsample_bytree': 0.85}
+best_iteration=66 val_auc=0.8100 val_log_loss=0.5240 val_accuracy=0.7200 val_brier=0.1774
+
+================================================================================
+Config 135/192
+{'max_depth': 6, 'learning_rate': 0.1, 'subsample': 0.6, 'colsample_bytree': 1.0}
+best_iteration=55 val_auc=0.8101 val_log_loss=0.5240 val_accuracy=0.7201 val_brier=0.1773
+
+================================================================================
+Config 136/192
+{'max_depth': 6, 'learning_rate': 0.1, 'subsample': 0.7, 'colsample_bytree': 0.7}
+best_iteration=56 val_auc=0.8104 val_log_loss=0.5237 val_accuracy=0.7214 val_brier=0.1772
+
+================================================================================
+Config 137/192
+{'max_depth': 6, 'learning_rate': 0.1, 'subsample': 0.7, 'colsample_bytree': 0.85}
+best_iteration=56 val_auc=0.8105 val_log_loss=0.5237 val_accuracy=0.7204 val_brier=0.1772
+
+================================================================================
+Config 138/192
+{'max_depth': 6, 'learning_rate': 0.1, 'subsample': 0.7, 'colsample_bytree': 1.0}
+best_iteration=56 val_auc=0.8107 val_log_loss=0.5233 val_accuracy=0.7210 val_brier=0.1771
+
+================================================================================
+Config 139/192
+{'max_depth': 6, 'learning_rate': 0.1, 'subsample': 0.85, 'colsample_bytree': 0.7}
+best_iteration=61 val_auc=0.8103 val_log_loss=0.5236 val_accuracy=0.7209 val_brier=0.1772
+
+================================================================================
+Config 140/192
+{'max_depth': 6, 'learning_rate': 0.1, 'subsample': 0.85, 'colsample_bytree': 0.85}
+best_iteration=59 val_auc=0.8101 val_log_loss=0.5241 val_accuracy=0.7204 val_brier=0.1774
+
+================================================================================
+Config 141/192
+{'max_depth': 6, 'learning_rate': 0.1, 'subsample': 0.85, 'colsample_bytree': 1.0}
+best_iteration=53 val_auc=0.8103 val_log_loss=0.5238 val_accuracy=0.7207 val_brier=0.1773
+
+================================================================================
+Config 142/192
+{'max_depth': 6, 'learning_rate': 0.1, 'subsample': 1.0, 'colsample_bytree': 0.7}
+best_iteration=59 val_auc=0.8103 val_log_loss=0.5237 val_accuracy=0.7213 val_brier=0.1773
+
+================================================================================
+Config 143/192
+{'max_depth': 6, 'learning_rate': 0.1, 'subsample': 1.0, 'colsample_bytree': 0.85}
+best_iteration=61 val_auc=0.8103 val_log_loss=0.5237 val_accuracy=0.7217 val_brier=0.1773
+
+================================================================================
+Config 144/192
+{'max_depth': 6, 'learning_rate': 0.1, 'subsample': 1.0, 'colsample_bytree': 1.0}
+best_iteration=54 val_auc=0.8100 val_log_loss=0.5240 val_accuracy=0.7201 val_brier=0.1773
+
+================================================================================
+Config 145/192
+{'max_depth': 8, 'learning_rate': 0.01, 'subsample': 0.6, 'colsample_bytree': 0.7}
+best_iteration=541 val_auc=0.8107 val_log_loss=0.5234 val_accuracy=0.7215 val_brier=0.1771
+
+================================================================================
+Config 146/192
+{'max_depth': 8, 'learning_rate': 0.01, 'subsample': 0.6, 'colsample_bytree': 0.85}
+best_iteration=541 val_auc=0.8106 val_log_loss=0.5234 val_accuracy=0.7215 val_brier=0.1771
+
+================================================================================
+Config 147/192
+{'max_depth': 8, 'learning_rate': 0.01, 'subsample': 0.6, 'colsample_bytree': 1.0}
+best_iteration=579 val_auc=0.8105 val_log_loss=0.5234 val_accuracy=0.7210 val_brier=0.1772
+
+================================================================================
+Config 148/192
+{'max_depth': 8, 'learning_rate': 0.01, 'subsample': 0.7, 'colsample_bytree': 0.7}
+best_iteration=555 val_auc=0.8107 val_log_loss=0.5233 val_accuracy=0.7214 val_brier=0.1771
+
+================================================================================
+Config 149/192
+{'max_depth': 8, 'learning_rate': 0.01, 'subsample': 0.7, 'colsample_bytree': 0.85}
+best_iteration=587 val_auc=0.8106 val_log_loss=0.5233 val_accuracy=0.7210 val_brier=0.1771
+
+================================================================================
+Config 150/192
+{'max_depth': 8, 'learning_rate': 0.01, 'subsample': 0.7, 'colsample_bytree': 1.0}
+best_iteration=566 val_auc=0.8105 val_log_loss=0.5236 val_accuracy=0.7208 val_brier=0.1772
+
+================================================================================
+Config 151/192
+{'max_depth': 8, 'learning_rate': 0.01, 'subsample': 0.85, 'colsample_bytree': 0.7}
+best_iteration=571 val_auc=0.8106 val_log_loss=0.5234 val_accuracy=0.7214 val_brier=0.1771
+
+================================================================================
+Config 152/192
+{'max_depth': 8, 'learning_rate': 0.01, 'subsample': 0.85, 'colsample_bytree': 0.85}
+best_iteration=535 val_auc=0.8104 val_log_loss=0.5236 val_accuracy=0.7206 val_brier=0.1772
+
+================================================================================
+Config 153/192
+{'max_depth': 8, 'learning_rate': 0.01, 'subsample': 0.85, 'colsample_bytree': 1.0}
+best_iteration=535 val_auc=0.8103 val_log_loss=0.5237 val_accuracy=0.7201 val_brier=0.1772
+
+================================================================================
+Config 154/192
+{'max_depth': 8, 'learning_rate': 0.01, 'subsample': 1.0, 'colsample_bytree': 0.7}
+best_iteration=567 val_auc=0.8105 val_log_loss=0.5236 val_accuracy=0.7210 val_brier=0.1772
+
+================================================================================
+Config 155/192
+{'max_depth': 8, 'learning_rate': 0.01, 'subsample': 1.0, 'colsample_bytree': 0.85}
+best_iteration=539 val_auc=0.8104 val_log_loss=0.5236 val_accuracy=0.7212 val_brier=0.1772
+
+================================================================================
+Config 156/192
+{'max_depth': 8, 'learning_rate': 0.01, 'subsample': 1.0, 'colsample_bytree': 1.0}
+best_iteration=538 val_auc=0.8102 val_log_loss=0.5238 val_accuracy=0.7209 val_brier=0.1773
+
+================================================================================
+Config 157/192
+{'max_depth': 8, 'learning_rate': 0.03, 'subsample': 0.6, 'colsample_bytree': 0.7}
+best_iteration=194 val_auc=0.8109 val_log_loss=0.5231 val_accuracy=0.7216 val_brier=0.1770
+
+================================================================================
+Config 158/192
+{'max_depth': 8, 'learning_rate': 0.03, 'subsample': 0.6, 'colsample_bytree': 0.85}
+best_iteration=191 val_auc=0.8106 val_log_loss=0.5233 val_accuracy=0.7210 val_brier=0.1771
+
+================================================================================
+Config 159/192
+{'max_depth': 8, 'learning_rate': 0.03, 'subsample': 0.6, 'colsample_bytree': 1.0}
+best_iteration=191 val_auc=0.8104 val_log_loss=0.5237 val_accuracy=0.7209 val_brier=0.1772
+
+================================================================================
+Config 160/192
+{'max_depth': 8, 'learning_rate': 0.03, 'subsample': 0.7, 'colsample_bytree': 0.7}
+best_iteration=180 val_auc=0.8108 val_log_loss=0.5232 val_accuracy=0.7210 val_brier=0.1770
+
+================================================================================
+Config 161/192
+{'max_depth': 8, 'learning_rate': 0.03, 'subsample': 0.7, 'colsample_bytree': 0.85}
+best_iteration=213 val_auc=0.8106 val_log_loss=0.5233 val_accuracy=0.7210 val_brier=0.1771
+
+================================================================================
+Config 162/192
+{'max_depth': 8, 'learning_rate': 0.03, 'subsample': 0.7, 'colsample_bytree': 1.0}
+best_iteration=191 val_auc=0.8103 val_log_loss=0.5238 val_accuracy=0.7209 val_brier=0.1773
+
+================================================================================
+Config 163/192
+{'max_depth': 8, 'learning_rate': 0.03, 'subsample': 0.85, 'colsample_bytree': 0.7}
+best_iteration=199 val_auc=0.8106 val_log_loss=0.5233 val_accuracy=0.7207 val_brier=0.1771
+
+================================================================================
+Config 164/192
+{'max_depth': 8, 'learning_rate': 0.03, 'subsample': 0.85, 'colsample_bytree': 0.85}
+best_iteration=196 val_auc=0.8104 val_log_loss=0.5236 val_accuracy=0.7204 val_brier=0.1772
+
+================================================================================
+Config 165/192
+{'max_depth': 8, 'learning_rate': 0.03, 'subsample': 0.85, 'colsample_bytree': 1.0}
+best_iteration=196 val_auc=0.8102 val_log_loss=0.5239 val_accuracy=0.7207 val_brier=0.1773
+
+================================================================================
+Config 166/192
+{'max_depth': 8, 'learning_rate': 0.03, 'subsample': 1.0, 'colsample_bytree': 0.7}
+best_iteration=182 val_auc=0.8104 val_log_loss=0.5236 val_accuracy=0.7214 val_brier=0.1772
+
+================================================================================
+Config 167/192
+{'max_depth': 8, 'learning_rate': 0.03, 'subsample': 1.0, 'colsample_bytree': 0.85}
+best_iteration=184 val_auc=0.8104 val_log_loss=0.5235 val_accuracy=0.7210 val_brier=0.1772
+
+================================================================================
+Config 168/192
+{'max_depth': 8, 'learning_rate': 0.03, 'subsample': 1.0, 'colsample_bytree': 1.0}
+best_iteration=191 val_auc=0.8103 val_log_loss=0.5237 val_accuracy=0.7206 val_brier=0.1773
+
+================================================================================
+Config 169/192
+{'max_depth': 8, 'learning_rate': 0.05, 'subsample': 0.6, 'colsample_bytree': 0.7}
+best_iteration=118 val_auc=0.8109 val_log_loss=0.5231 val_accuracy=0.7213 val_brier=0.1770
+
+================================================================================
+Config 170/192
+{'max_depth': 8, 'learning_rate': 0.05, 'subsample': 0.6, 'colsample_bytree': 0.85}
+best_iteration=117 val_auc=0.8108 val_log_loss=0.5232 val_accuracy=0.7213 val_brier=0.1770
+
+================================================================================
+Config 171/192
+{'max_depth': 8, 'learning_rate': 0.05, 'subsample': 0.6, 'colsample_bytree': 1.0}
+best_iteration=124 val_auc=0.8106 val_log_loss=0.5234 val_accuracy=0.7207 val_brier=0.1772
+
+================================================================================
+Config 172/192
+{'max_depth': 8, 'learning_rate': 0.05, 'subsample': 0.7, 'colsample_bytree': 0.7}
+best_iteration=110 val_auc=0.8109 val_log_loss=0.5232 val_accuracy=0.7214 val_brier=0.1771
+
+================================================================================
+Config 173/192
+{'max_depth': 8, 'learning_rate': 0.05, 'subsample': 0.7, 'colsample_bytree': 0.85}
+best_iteration=108 val_auc=0.8108 val_log_loss=0.5233 val_accuracy=0.7210 val_brier=0.1771
+
+================================================================================
+Config 174/192
+{'max_depth': 8, 'learning_rate': 0.05, 'subsample': 0.7, 'colsample_bytree': 1.0}
+best_iteration=124 val_auc=0.8105 val_log_loss=0.5234 val_accuracy=0.7206 val_brier=0.1772
+
+================================================================================
+Config 175/192
+{'max_depth': 8, 'learning_rate': 0.05, 'subsample': 0.85, 'colsample_bytree': 0.7}
+best_iteration=109 val_auc=0.8107 val_log_loss=0.5234 val_accuracy=0.7208 val_brier=0.1771
+
+================================================================================
+Config 176/192
+{'max_depth': 8, 'learning_rate': 0.05, 'subsample': 0.85, 'colsample_bytree': 0.85}
+best_iteration=109 val_auc=0.8105 val_log_loss=0.5236 val_accuracy=0.7214 val_brier=0.1772
+
+================================================================================
+Config 177/192
+{'max_depth': 8, 'learning_rate': 0.05, 'subsample': 0.85, 'colsample_bytree': 1.0}
+best_iteration=111 val_auc=0.8104 val_log_loss=0.5237 val_accuracy=0.7207 val_brier=0.1773
+
+================================================================================
+Config 178/192
+{'max_depth': 8, 'learning_rate': 0.05, 'subsample': 1.0, 'colsample_bytree': 0.7}
+best_iteration=110 val_auc=0.8105 val_log_loss=0.5234 val_accuracy=0.7215 val_brier=0.1772
+
+================================================================================
+Config 179/192
+{'max_depth': 8, 'learning_rate': 0.05, 'subsample': 1.0, 'colsample_bytree': 0.85}
+best_iteration=107 val_auc=0.8103 val_log_loss=0.5237 val_accuracy=0.7210 val_brier=0.1772
+
+================================================================================
+Config 180/192
+{'max_depth': 8, 'learning_rate': 0.05, 'subsample': 1.0, 'colsample_bytree': 1.0}
+best_iteration=113 val_auc=0.8102 val_log_loss=0.5238 val_accuracy=0.7202 val_brier=0.1773
+
+================================================================================
+Config 181/192
+{'max_depth': 8, 'learning_rate': 0.1, 'subsample': 0.6, 'colsample_bytree': 0.7}
+best_iteration=62 val_auc=0.8106 val_log_loss=0.5235 val_accuracy=0.7209 val_brier=0.1771
+
+================================================================================
+Config 182/192
+{'max_depth': 8, 'learning_rate': 0.1, 'subsample': 0.6, 'colsample_bytree': 0.85}
+best_iteration=62 val_auc=0.8102 val_log_loss=0.5240 val_accuracy=0.7202 val_brier=0.1774
+
+================================================================================
+Config 183/192
+{'max_depth': 8, 'learning_rate': 0.1, 'subsample': 0.6, 'colsample_bytree': 1.0}
+best_iteration=55 val_auc=0.8102 val_log_loss=0.5239 val_accuracy=0.7207 val_brier=0.1773
+
+================================================================================
+Config 184/192
+{'max_depth': 8, 'learning_rate': 0.1, 'subsample': 0.7, 'colsample_bytree': 0.7}
+best_iteration=56 val_auc=0.8106 val_log_loss=0.5236 val_accuracy=0.7210 val_brier=0.1771
+
+================================================================================
+Config 185/192
+{'max_depth': 8, 'learning_rate': 0.1, 'subsample': 0.7, 'colsample_bytree': 0.85}
+best_iteration=62 val_auc=0.8108 val_log_loss=0.5231 val_accuracy=0.7215 val_brier=0.1770
+
+================================================================================
+Config 186/192
+{'max_depth': 8, 'learning_rate': 0.1, 'subsample': 0.7, 'colsample_bytree': 1.0}
+best_iteration=50 val_auc=0.8107 val_log_loss=0.5232 val_accuracy=0.7202 val_brier=0.1771
+
+================================================================================
+Config 187/192
+{'max_depth': 8, 'learning_rate': 0.1, 'subsample': 0.85, 'colsample_bytree': 0.7}
+best_iteration=61 val_auc=0.8105 val_log_loss=0.5235 val_accuracy=0.7213 val_brier=0.1772
+
+================================================================================
+Config 188/192
+{'max_depth': 8, 'learning_rate': 0.1, 'subsample': 0.85, 'colsample_bytree': 0.85}
+best_iteration=52 val_auc=0.8104 val_log_loss=0.5238 val_accuracy=0.7210 val_brier=0.1773
+
+================================================================================
+Config 189/192
+{'max_depth': 8, 'learning_rate': 0.1, 'subsample': 0.85, 'colsample_bytree': 1.0}
+best_iteration=58 val_auc=0.8099 val_log_loss=0.5243 val_accuracy=0.7203 val_brier=0.1775
+
+================================================================================
+Config 190/192
+{'max_depth': 8, 'learning_rate': 0.1, 'subsample': 1.0, 'colsample_bytree': 0.7}
+best_iteration=72 val_auc=0.8107 val_log_loss=0.5235 val_accuracy=0.7222 val_brier=0.1772
+
+================================================================================
+Config 191/192
+{'max_depth': 8, 'learning_rate': 0.1, 'subsample': 1.0, 'colsample_bytree': 0.85}
+best_iteration=54 val_auc=0.8101 val_log_loss=0.5240 val_accuracy=0.7203 val_brier=0.1773
+
+================================================================================
+Config 192/192
+{'max_depth': 8, 'learning_rate': 0.1, 'subsample': 1.0, 'colsample_bytree': 1.0}
+best_iteration=51 val_auc=0.8101 val_log_loss=0.5239 val_accuracy=0.7203 val_brier=0.1773
+
+================================================================================
+Best config
+{'max_depth': 8, 'learning_rate': 0.05, 'subsample': 0.6, 'colsample_bytree': 0.7}
+Best validation log loss: 0.5231
+Saved grid search results to: results\xgb_grid_search_results.csv
+
+Final evaluation
+Saved feature importances to: results\xgb_feature_importances.csv
+Saved feature importance chart to: figures\xgb_feature_importance.png
+
+Top 10 features by gain:
+  team_total_gold_diff                          gain=499.95  weight=483
+  team_xp_diff                                  gain=267.57  weight=279
+  team_kills_diff                               gain=233.14  weight=66
+  team_deaths_diff                              gain=72.48  weight=100
+  dragons_diff                                  gain=69.96  weight=542
+  team_total_gold_diff_delta_3min               gain=35.68  weight=174
+  team_damage_done_to_champions_diff_delta_3min gain=29.43  weight=267
+  team_kills_diff_delta_3min                    gain=19.67  weight=60
+  dragons_diff_delta_3min                       gain=12.09  weight=74
+  jg_total_gold_diff                            gain=11.75  weight=368
+
+Test metrics across all valid minutes
+AUC: 0.816
+Log loss: 0.5136
+Accuracy: 0.7236
+Brier score: 0.1741
+Rows: 59218
+Saved calibration curve to: figures\xgb_calibration_curve.png (Brier=0.1741)
+
+Test metrics by minute bucket
+1-5 | rows: 9600 | auc: 0.629 | log_loss: 0.6669 | accuracy: 0.587 | brier: 0.2372
+6-10 | rows: 9600 | auc: 0.7326 | log_loss: 0.6036 | accuracy: 0.6647 | brier: 0.2088
+11-15 | rows: 9600 | auc: 0.8226 | log_loss: 0.5149 | accuracy: 0.7412 | brier: 0.1721
+16-20 | rows: 9060 | auc: 0.8619 | log_loss: 0.4611 | accuracy: 0.7731 | brier: 0.1521
+21-25 | rows: 8232 | auc: 0.9054 | log_loss: 0.3879 | accuracy: 0.8166 | brier: 0.1254
+26-30 | rows: 5937 | auc: 0.9088 | log_loss: 0.3814 | accuracy: 0.8252 | brier: 0.1222
+31-45 | rows: 4771 | auc: 0.8664 | log_loss: 0.4552 | accuracy: 0.7759 | brier: 0.1505
+
+Saved model to: models\xgb_model.json
+Saved predictions to: results\xgb_predictions.parquet
+Saved shared split to: results\shared_split_ids.npz
