@@ -5,6 +5,7 @@ A study of whether win probability in League of Legends is explained by economic
 A logistic regression baseline and an XGBoost ensemble were trained on 9,596 ranked solo/duo NA matches (295,852 per-minute snapshots, single patch, Iron through Challenger), then evaluated with a feature-ablation study using match-level bootstrapped confidence intervals.
 
 Check out the demo [here](https://jjzhao05-league-of-legends-win-probability-model-app-8g8jtl.streamlit.app/)
+
 Read the full report [here](report.pdf)
 
 ## Model performance
