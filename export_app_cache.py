@@ -1,5 +1,4 @@
-"""Caches the tower/objective columns app.py needs for event annotations,
-for just the test-set matches. Run locally, then commit the output file."""
+"""Caches the tower/objective columns app.py needs for event annotations"""
 
 from pathlib import Path
 
